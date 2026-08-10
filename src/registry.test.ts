@@ -34,9 +34,11 @@ const FLAGS_INDEX_PATH = path.resolve(HERE, "index.ts");
 // Resolve pi-steering's source-file index via this package's
 // node_modules symlink \u2014 the registry block in index.ts uses
 // `import "pi-steering"` which resolves through the workspace alias.
-const PI_STEERING_INDEX_PATH = path.resolve(
-  HERE,
-  "../../pi-steering/src/index.ts",
+// Resolve pi-steering's type declarations through node_modules (the
+// monorepo-era sibling path `../../pi-steering/src/index.ts` no longer
+// exists since the 2026-08-10 split).
+const PI_STEERING_INDEX_PATH = fileURLToPath(
+  new URL("../node_modules/@cad0p/pi-steering/dist/index.js", import.meta.url),
 );
 
 const COMPILER_OPTIONS: ts.CompilerOptions = {
