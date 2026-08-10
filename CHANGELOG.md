@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 ### 🐛 Bug Fixes
 
 - Approve peer-graph build scripts (@google/genai, protobufjs) in pnpm-workspace.yaml ([#4](https://github.com/cad0p/pi-steering-flags/pull/4))
+- Workspace policies + node_modules-based type resolution for registry tests ([#9](https://github.com/cad0p/pi-steering-flags/pull/9))
 
 ### 🎨 Styling
 
