@@ -13,7 +13,7 @@
  * (the raw source slice).
  */
 
-import type { Word } from "pi-steering";
+import type { Word } from "@cad0p/pi-steering";
 
 /**
  * Read a word's resolved value with a fallback to its text form.
@@ -126,7 +126,7 @@ export function hasEnvAssignment(
  * the guardrail.
  *
  * @example
- *   import { INFO_ONLY } from "pi-steering-flags";
+ *   import { INFO_ONLY } from "@cad0p/pi-steering-flags";
  *   {
  *     name: "cr-allowlisted-flags-only",
  *     pattern: /^cr\b/,

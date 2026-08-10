@@ -10,10 +10,10 @@
  * follows:
  *
  *   - Package name: `pi-steering-<domain>` (unscoped, mirroring
- *     `pi-steering` core).
+ *     `@cad0p/pi-steering` core).
  *   - Keywords: `["pi-package", "pi-steering-package", ...]` for
  *     ecosystem discoverability via pi.dev and `npm search`.
- *   - PeerDep on `pi-steering` (pinned range once published).
+ *   - PeerDep on `@cad0p/pi-steering` (pinned range once published).
  *   - Two predicates exported as a `Plugin`, three helpers exported
  *     for `when.condition` escape-hatch use.
  *
@@ -27,7 +27,7 @@
  * mirrors the same import-side-effect contract from its `plugin.ts`.
  */
 
-import type { Plugin, PredicateShape } from "pi-steering";
+import type { Plugin, PredicateShape } from "@cad0p/pi-steering";
 import { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
 import { requiresFlag } from "./predicates/requires-flag.ts";
 import type { AllowlistedFlagsOnlyArgs, RequiresFlagArgs } from "./types.ts";
@@ -48,7 +48,7 @@ declare global {
    * `"unknown"` sentinel; current handlers return only `boolean`.
    *
    * @see PredicateShape, DefaultSpreadBase, PredicateModifiers in
-   *      `pi-steering`'s `schema.ts` for the full registry contract.
+   *      `@cad0p/pi-steering`'s `schema.ts` for the full registry contract.
    * @see The `gitPlugin` declaration in pi-steering's
    *      `plugins/git/index.ts` for the canonical multi-predicate
    *      registry block.

@@ -3,7 +3,7 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Word } from "pi-steering";
+import type { Word } from "@cad0p/pi-steering";
 import {
   getFlagValue,
   hasEnvAssignment,

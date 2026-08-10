@@ -2,3 +2,6 @@
 # pi-steering (git dep) itself depends on unbash-walker via github:,
 # so disable the block for this package tree.
 blockExoticSubdeps: false
+minimumReleaseAgeExclude:
+  - '@cad0p/pi-steering@0.1.0'
+  - '@cad0p/unbash-walker@0.1.0'
