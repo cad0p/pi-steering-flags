@@ -12,8 +12,8 @@
  * Fires (rule BLOCKS) on the first disallowed flag token.
  */
 
-import type { Word } from "pi-steering";
-import { definePredicate } from "pi-steering";
+import type { Word } from "@cad0p/pi-steering";
+import { definePredicate } from "@cad0p/pi-steering";
 import type { AllowlistedFlagsOnlyArgs } from "../types.ts";
 
 function wordValue(w: Word): string {

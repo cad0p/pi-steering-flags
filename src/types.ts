@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Part of pi-steering-flags.
 
-import type { Word } from "pi-steering";
+import type { Word } from "@cad0p/pi-steering";
 
 /**
  * Shape accepted by `when.requiresFlag`.

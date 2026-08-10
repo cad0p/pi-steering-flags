@@ -10,13 +10,13 @@ First official external plugin for the pi-steering ecosystem. Establishes the pr
 pnpm add pi-steering-flags
 ```
 
-`pi-steering-flags` declares `pi-steering` as a `peerDependency`; install both together.
+`pi-steering-flags` declares `@cad0p/pi-steering` as a `peerDependency`; install both together.
 
 ## Usage
 
 ```ts
 // .pi/steering/index.ts
-import { defineConfig } from "pi-steering";
+import { defineConfig } from "@cad0p/pi-steering";
 import flagsPlugin, { INFO_ONLY } from "pi-steering-flags";
 
 export default defineConfig({

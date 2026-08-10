@@ -3,8 +3,8 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Word } from "pi-steering";
-import { testPredicate } from "pi-steering/testing";
+import type { Word } from "@cad0p/pi-steering";
+import { testPredicate } from "@cad0p/pi-steering/testing";
 import { requiresFlag } from "./requires-flag.ts";
 
 function W(value: string): Word {
