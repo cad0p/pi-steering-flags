@@ -1,6 +1,17 @@
 # Changelog
 
-All notable changes to `pi-steering-flags` are documented in this file.
+All notable changes to this project will be documented in this file.
+
+## [calver-released]
+
+<!-- USER-EDITABLE SECTION START -->
+<!-- Add your curated release notes here. -->
+<!-- USER-EDITABLE SECTION END -->
+
+### 🐛 Bug Fixes
+
+- Approve peer-graph build scripts (@google/genai, protobufjs) in pnpm-workspace.yaml ([#4](https://github.com/cad0p/pi-steering-flags/pull/4))
+
 
 ## [Unreleased]
 
