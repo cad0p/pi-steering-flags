@@ -1,6 +1,6 @@
 # pi-steering-flags
 
-Declarative flag-presence and flag-allowlist predicates for [pi-steering](https://github.com/cad0p/pi-steering-hooks) rules.
+Declarative flag-presence and flag-allowlist predicates for [pi-steering](https://github.com/cad0p/pi-steering) rules.
 
 First official external plugin for the pi-steering ecosystem. Establishes the precedent pattern for every community plugin that follows.
 
