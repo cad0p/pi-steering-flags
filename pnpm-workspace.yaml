@@ -1,0 +1,4 @@
+# pnpm 11 blocks exotic (git/file) transitive deps by default.
+# pi-steering (git dep) itself depends on unbash-walker via github:,
+# so disable the block for this package tree.
+blockExoticSubdeps: false
