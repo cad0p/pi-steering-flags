@@ -14,7 +14,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { defineConfig } from "@cad0p/pi-steering";
-import { expectAllows, expectBlocks, loadHarness } from "@cad0p/pi-steering/testing";
+import {
+  expectAllows,
+  expectBlocks,
+  loadHarness,
+} from "@cad0p/pi-steering/testing";
 import flagsPlugin from "./index.ts";
 
 describe("pi-steering-flags plugin (e2e)", () => {
