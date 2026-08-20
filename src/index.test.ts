@@ -11,7 +11,6 @@
  * live in the per-predicate test files.
  */
 
-import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { defineConfig } from "@cad0p/pi-steering";
 import {
@@ -76,7 +75,7 @@ describe("pi-steering-flags plugin (e2e)", () => {
     });
   });
 
-  it("combines with Rule.unless (INFO_ONLY carve-out)", async () => {
+  it("combines with when.not.infoOnly carve-out", async () => {
     const config = defineConfig({
       plugins: [flagsPlugin],
       rules: [
@@ -85,8 +84,8 @@ describe("pi-steering-flags plugin (e2e)", () => {
           tool: "bash",
           field: "command",
           pattern: /^cr\b/,
-          unless: /(^|\s)(-h|--help)\b/,
           when: {
+            not: { infoOnly: { extraFlags: ["-h"] } },
             allowlistedFlagsOnly: { allow: ["--description"] },
           },
           reason: "disallowed flag",
@@ -95,10 +94,61 @@ describe("pi-steering-flags plugin (e2e)", () => {
     });
     const harness = loadHarness({ config });
 
-    // --publish would normally fire, but --help carves out.
+    // --publish would normally fire, but --help (with the -h extra)
+    // carves out the whole when-clause.
     await expectAllows(harness, { command: "cr --help --publish" });
+    await expectAllows(harness, { command: "cr -h --publish" });
 
-    // Without --help, the disallowed flag fires.
+    // Without an info-only flag, the disallowed flag fires.
     await expectBlocks(harness, { command: "cr --publish" });
+  });
+
+  it("infoOnly: bare true blocks non-info-only commands, allows --help / --version", async () => {
+    const config = defineConfig({
+      plugins: [flagsPlugin],
+      rules: [
+        {
+          name: "gh-merge-info-only",
+          tool: "bash",
+          field: "command",
+          pattern: /^gh pr merge\b/,
+          when: { not: { infoOnly: true } },
+          reason: "real gh pr merge needs extra guards",
+        },
+      ],
+    });
+    const harness = loadHarness({ config });
+
+    // Info-only invocations are carved out.
+    await expectAllows(harness, { command: "gh pr merge --help" });
+    await expectAllows(harness, { command: "gh pr merge --version" });
+
+    // Real operations still fire (the when-clause ANDs back in).
+    await expectBlocks(harness, { command: "gh pr merge --squash" });
+    await expectBlocks(harness, { command: "gh pr merge" });
+  });
+
+  it("infoOnly: help inside a quoted VALUE does not carve out (issue #13 repro)", async () => {
+    const config = defineConfig({
+      plugins: [flagsPlugin],
+      rules: [
+        {
+          name: "gh-merge-quoted-help",
+          tool: "bash",
+          field: "command",
+          pattern: /^gh pr merge\b/,
+          when: { not: { infoOnly: true } },
+          reason: "real gh pr merge needs extra guards",
+        },
+      ],
+    });
+    const harness = loadHarness({ config });
+
+    // The old INFO_ONLY regex matched the `--help` inside the quoted
+    // value and wrongly allowed the merge. Token-level detection
+    // blocks it.
+    await expectBlocks(harness, {
+      command: 'gh pr merge --squash --subject "see --help"',
+    });
   });
 });

@@ -14,7 +14,7 @@
  *   - Keywords: `["pi-package", "pi-steering-package", ...]` for
  *     ecosystem discoverability via pi.dev and `npm search`.
  *   - PeerDep on `@cad0p/pi-steering` (pinned range once published).
- *   - Two predicates exported as a `Plugin`, three helpers exported
+ *   - Three predicates exported as a `Plugin`, four helpers exported
  *     for `when.condition` escape-hatch use.
  *
  * See this package's README for usage examples, and the pi-steering
@@ -29,8 +29,13 @@
 
 import type { Plugin, PredicateShape } from "@cad0p/pi-steering";
 import { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
+import { infoOnly } from "./predicates/info-only.ts";
 import { requiresFlag } from "./predicates/requires-flag.ts";
-import type { AllowlistedFlagsOnlyArgs, RequiresFlagArgs } from "./types.ts";
+import type {
+  AllowlistedFlagsOnlyArgs,
+  InfoOnlyArgs,
+  RequiresFlagArgs,
+} from "./types.ts";
 
 declare global {
   /**
@@ -83,6 +88,35 @@ declare global {
      * `Bare` shape itself) is exactly what we want.
      */
     allowlistedFlagsOnly: PredicateShape<AllowlistedFlagsOnlyArgs>;
+
+    /**
+     * `when.infoOnly` — fires (rule BLOCKS) when the command IS an
+     * info-only invocation (token-level, quote-aware). This is the
+     * replacement for the removed `INFO_ONLY` regex: a help token
+     * inside a quoted VALUE (`--subject "see --help"`) does NOT
+     * count, so guardrails still apply to real operations that merely
+     * mention help text.
+     *
+     * Bare shorthand `infoOnly: true` checks the default set
+     * (`--help` / `--version` only — `-h` / `-v` are deliberately
+     * excluded: they are real operations in commands like
+     * `docker run -v /data:/data` or `curl -v`). `infoOnly: false`
+     * never fires.
+     *
+     * Spread form is additive-only:
+     * `when: { infoOnly: { extraFlags: ["-h"] } }` checks the default
+     * set PLUS the extra flags — nothing can remove the safe core; a
+     * plugin author adding `-h` for their own CLI owns that security
+     * tradeoff.
+     *
+     * Carve-out idiom — combine with `when.not`:
+     * `when: { not: { infoOnly: true } }` ALLOWS info-only
+     * invocations while everything else still evaluates. The `when`
+     * clause is an AND: a naive `when: { infoOnly: true }` would
+     * BLOCK on help (the clause requires the command to BE
+     * info-only), the opposite of a carve-out.
+     */
+    infoOnly: PredicateShape<boolean, InfoOnlyArgs>;
   }
 }
 
@@ -100,6 +134,7 @@ export const flagsPlugin = {
   predicates: {
     requiresFlag,
     allowlistedFlagsOnly,
+    infoOnly,
   },
 } as const satisfies Plugin;
 
@@ -109,13 +144,16 @@ export {
   getFlagValue,
   hasEnvAssignment,
   hasFlag,
-  INFO_ONLY,
+  INFO_FLAGS,
+  isInfoOnly,
 } from "./helpers.ts";
 export { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
 // Named re-exports \u2014 pick-your-piece imports for authors who want
 // just one predicate or a helper.
+export { infoOnly } from "./predicates/info-only.ts";
 export { requiresFlag } from "./predicates/requires-flag.ts";
 export type {
   AllowlistedFlagsOnlyArgs,
+  InfoOnlyArgs,
   RequiresFlagArgs,
 } from "./types.ts";

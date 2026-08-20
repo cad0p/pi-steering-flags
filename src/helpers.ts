@@ -120,18 +120,39 @@ export function hasEnvAssignment(
 }
 
 /**
- * Info-only flag regex matching `-h` / `--help` / `-v` / `--version`.
- * Exported as a convenience for rule authors who want a `Rule.unless`
- * carve-out for help / version invocations that should never trigger
- * the guardrail.
+ * Default set of info-only flags, matching only the long forms
+ * `--help` and `--version`.
+ *
+ * `-h` and `-v` are deliberately EXCLUDED: they are real operations
+ * in adversarial commands (`docker run -v /data:/data`, `curl -v`,
+ * `kubectl -v 8`, `psql -h host`), so a default info-only set must
+ * never treat them as carve-outs. Add them per-CLI via
+ * {@link isInfoOnly}'s `extraFlags` when a rule author owns that
+ * tradeoff for their own tool.
+ */
+export const INFO_FLAGS = ["--help", "--version"] as const;
+
+/**
+ * `true` if `args` contains any info-only flag (token-level, quote-
+ * aware). Checks the default {@link INFO_FLAGS} set plus any additive
+ * `extraFlags`.
+ *
+ * Unlike the old `INFO_ONLY` regex, this matches on TOKENS, so a help
+ * string inside a quoted VALUE (`gh pr merge --subject "see --help"`)
+ * does NOT count — the token there is a value, not a flag. The
+ * attached-value form `--help=x` DOES count (via {@link hasFlag}'s
+ * prefix semantics), matching how real CLIs parse it.
  *
  * @example
- *   import { INFO_ONLY } from "@cad0p/pi-steering-flags";
- *   {
- *     name: "cr-allowlisted-flags-only",
- *     pattern: /^cr\b/,
- *     unless: INFO_ONLY,
- *     when: { allowlistedFlagsOnly: { allow: ["--description"] } },
- *   }
+ *   isInfoOnly([W("--help")]);                    // true
+ *   isInfoOnly([W("see --help")]);                // false (a value)
+ *   isInfoOnly([W("-v")]);                        // false (not in default set)
+ *   isInfoOnly([W("-v")], ["-v"]);               // true  (additive extra)
  */
-export const INFO_ONLY = /(^|\s)(-h|--help|-v|--version)\b/;
+export function isInfoOnly(
+  args: readonly Word[] | undefined,
+  extraFlags?: readonly string[],
+): boolean {
+  const flags = [...INFO_FLAGS, ...(extraFlags ?? [])];
+  return flags.some((f) => hasFlag(args, f));
+}

@@ -41,6 +41,37 @@ export interface RequiresFlagArgs {
 }
 
 /**
+ * Shape accepted by `when.infoOnly`.
+ *
+ * The predicate fires (rule BLOCKS) when the command IS an info-only
+ * invocation (token-level, quote-aware). Bare shorthand
+ * `infoOnly: true` checks the default set (`--help` / `--version`);
+ * `false` never fires.
+ *
+ * @example
+ * // Default set (--help / --version only).
+ * when: { infoOnly: true }
+ *
+ * // Default set plus an additive extra flag (e.g. for a CLI whose
+ * // help lives on -h). Nothing can remove the safe core.
+ * when: { infoOnly: { extraFlags: ["-h"] } }
+ *
+ * // Carve-out idiom — ALLOW info-only invocations (the when clause
+ * // is an AND: a naive `when: { infoOnly: true }` would BLOCK on help).
+ * when: { not: { infoOnly: true } }
+ */
+export interface InfoOnlyArgs {
+  /**
+   * Additional info-only flags to check in ADDITION to the default
+   * `--help` / `--version` set. `-h` / `-v` are deliberately NOT in
+   * the default set (they are real operations in commands like
+   * `docker run -v /data:/data` or `curl -v`); a rule author adding
+   * them here owns that security tradeoff for their own CLI.
+   */
+  extraFlags?: readonly string[];
+}
+
+/**
  * Shape accepted by `when.allowlistedFlagsOnly`.
  *
  * The predicate fires (rule BLOCKS) when any token in `ctx.input.args`

@@ -151,6 +151,46 @@ describe("pi-steering-flags PiSteeringPredicates registry", () => {
     });
   });
 
+  it("infoOnly accepts the bare-boolean shorthand inside `when:`", () => {
+    withScratch("info-bare", (scratchDir) => {
+      const source =
+        IMPORT_HEADER +
+        "const r = {\n" +
+        RULE_PROLOGUE +
+        "\n\twhen: { not: { infoOnly: true } },\n" +
+        "} as const satisfies Rule;\n" +
+        "export default defineConfig({ rules: [r] });\n";
+      const diagnostics = compile(scratchDir, source);
+      assert.deepEqual(
+        diagnostics.map((d) =>
+          ts.flattenDiagnosticMessageText(d.messageText, "\n"),
+        ),
+        [],
+        "infoOnly bare-boolean shorthand should typecheck",
+      );
+    });
+  });
+
+  it("infoOnly accepts the spread form (additive extraFlags) inside `when:`", () => {
+    withScratch("info-spread", (scratchDir) => {
+      const source =
+        IMPORT_HEADER +
+        "const r = {\n" +
+        RULE_PROLOGUE +
+        '\n\twhen: { infoOnly: { extraFlags: ["-h"] } },\n' +
+        "} as const satisfies Rule;\n" +
+        "export default defineConfig({ rules: [r] });\n";
+      const diagnostics = compile(scratchDir, source);
+      assert.deepEqual(
+        diagnostics.map((d) =>
+          ts.flattenDiagnosticMessageText(d.messageText, "\n"),
+        ),
+        [],
+        "infoOnly spread form should typecheck",
+      );
+    });
+  });
+
   it("rejects unknown predicate names \u2014 registry is the source of truth", () => {
     withScratch("unknown-key", (scratchDir) => {
       const source =
