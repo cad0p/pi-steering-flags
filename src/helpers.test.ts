@@ -8,7 +8,8 @@ import {
   getFlagValue,
   hasEnvAssignment,
   hasFlag,
-  INFO_ONLY,
+  INFO_FLAGS,
+  isInfoOnly,
 } from "./helpers.ts";
 
 /** Minimal Word for tests — tests don't exercise the walker, just the helpers. */
@@ -119,32 +120,72 @@ describe("hasEnvAssignment", () => {
   });
 });
 
-describe("INFO_ONLY", () => {
-  it("matches -h", () => {
-    assert.ok(INFO_ONLY.test("cr -h"));
+describe("INFO_FLAGS", () => {
+  it("is exactly the minimal safe default set (--help / --version only)", () => {
+    assert.deepEqual([...INFO_FLAGS], ["--help", "--version"]);
   });
 
-  it("matches --help", () => {
-    assert.ok(INFO_ONLY.test("cr --help"));
+  it("does NOT include the -h / -v short forms (adversarial ops)", () => {
+    const flags = INFO_FLAGS as readonly string[];
+    assert.ok(!flags.includes("-h"));
+    assert.ok(!flags.includes("-v"));
+  });
+});
+
+describe("isInfoOnly", () => {
+  it("returns true for bare --help", () => {
+    assert.equal(isInfoOnly([W("--help")]), true);
   });
 
-  it("matches -v", () => {
-    assert.ok(INFO_ONLY.test("cr -v"));
+  it("returns true for bare --version", () => {
+    assert.equal(isInfoOnly([W("--version")]), true);
   });
 
-  it("matches --version", () => {
-    assert.ok(INFO_ONLY.test("cr --version"));
+  it("returns false for -h (not in the default set)", () => {
+    assert.equal(isInfoOnly([W("-h")]), false);
   });
 
-  it("does NOT match --helpful (word-boundary)", () => {
-    assert.ok(!INFO_ONLY.test("cr --helpful"));
+  it("returns false for -v (not in the default set)", () => {
+    assert.equal(isInfoOnly([W("-v")]), false);
   });
 
-  it("does NOT match -hh", () => {
-    assert.ok(!INFO_ONLY.test("cr -hh"));
+  it("does NOT match --help inside a quoted VALUE (issue #13 repro)", () => {
+    // `gh pr merge --squash --subject "see --help"` — the `--help`
+    // token here is a VALUE (resolved by the quote-aware walker to a
+    // single `see --help` word), not a flag token. Token-level
+    // detection must NOT carve it out.
+    assert.equal(
+      isInfoOnly([W("--squash"), W("--subject"), W("see --help")]),
+      false,
+    );
   });
 
-  it("does NOT match when there is no flag", () => {
-    assert.ok(!INFO_ONLY.test("cr --description foo.md"));
+  it("does NOT match --helpful (token equality, not substring)", () => {
+    assert.equal(isInfoOnly([W("--helpful")]), false);
+  });
+
+  it("does NOT match glued short forms like -hx", () => {
+    assert.equal(isInfoOnly([W("-hx")]), false);
+  });
+
+  it("matches attached-value forms --help=x AND --version=1", () => {
+    // `hasFlag`'s prefix semantics treat `--help=...` / `--version=...`
+    // as the same flag with an attached value.
+    assert.equal(isInfoOnly([W("--help=x")]), true);
+    assert.equal(isInfoOnly([W("--version=1")]), true);
+  });
+
+  it("extraFlags: ['-h'] makes -h count but -v still does NOT", () => {
+    const extra = ["-h"];
+    assert.equal(isInfoOnly([W("-h")], extra), true);
+    assert.equal(isInfoOnly([W("-v")], extra), false);
+  });
+
+  it("returns false on undefined args", () => {
+    assert.equal(isInfoOnly(undefined), false);
+  });
+
+  it("returns false on empty args", () => {
+    assert.equal(isInfoOnly([]), false);
   });
 });
