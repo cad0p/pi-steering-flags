@@ -8,6 +8,10 @@ All notable changes to this project will be documented in this file.
 <!-- Add your curated release notes here. -->
 <!-- USER-EDITABLE SECTION END -->
 
+### 🚀 Features
+
+- Token-level info-only detection — isInfoOnly + when.infoOnly (closes #13)
+
 ### 🐛 Bug Fixes
 
 - Approve peer-graph build scripts (@google/genai, protobufjs) in pnpm-workspace.yaml ([#4](https://github.com/cad0p/pi-steering-flags/pull/4))
