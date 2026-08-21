@@ -41,6 +41,34 @@ export interface RequiresFlagArgs {
 }
 
 /**
+ * Shape accepted by `when.requiresFlagValue`.
+ *
+ * Fires (rule BLOCKS) when the LAST-wins value of any listed alias is
+ * absent, valueless, or does not satisfy `matches` — gh/cobra/pflag
+ * semantics: repeated flags override earlier occurrences.
+ *
+ * An ABSENT flag counts as unmet (fail-closed): a rule that requires
+ * a matching value must block when the flag isn't there at all.
+ *
+ * @example
+ * // gh pr merge: --subject / -t must carry a closing keyword.
+ * // (Compose with the info-only carve-out so `--help` still passes.)
+ * when: {
+ *   not: { infoOnly: { extraFlags: ["-h"] } },
+ *   requiresFlagValue: {
+ *     flags: ["--subject", "-t"],
+ *     matches: /\b(closes?|fixe?s?|resolves?)\s+#\d+\b|(^|\s)#\d+/i,
+ *   },
+ * }
+ */
+export interface RequiresFlagValueArgs {
+  /** Aliases of ONE logical flag; OR'd at every scanned position. */
+  flags: readonly string[];
+  /** Pattern the effective value must satisfy. */
+  matches: RegExp;
+}
+
+/**
  * Shape accepted by `when.infoOnly`.
  *
  * The predicate fires (rule BLOCKS) when the command IS an info-only
