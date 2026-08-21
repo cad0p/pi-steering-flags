@@ -147,7 +147,12 @@ when: { not: { infoOnly: { extraFlags: ["-h"] } } }
 When the built-in predicates aren't enough, reach for these helpers inside `when.condition`:
 
 ```ts
-import { getFlagValue, hasEnvAssignment, hasFlag } from "pi-steering-flags";
+import {
+  getFlagValue,
+  getLastFlagValue,
+  hasEnvAssignment,
+  hasFlag,
+} from "pi-steering-flags";
 
 when: {
   condition: async (ctx) => {
@@ -162,9 +167,19 @@ when: {
 
 - `hasFlag(args, flag)` — bare or `flag=value` form.
 - `getFlagValue(args, flag)` — separated `flag value` or attached `flag=value`.
+- `getLastFlagValue(args, flags)` — last-flag-wins variant of `getFlagValue` (see below).
 - `hasEnvAssignment(envAssignments, name)` — literal env-var name match.
 - `INFO_FLAGS` — the default info-only set (`["--help", "--version"]`).
 - `isInfoOnly(args, extraFlags?)` — token-level info-only detection: true when any of `INFO_FLAGS` (plus optional additive `extraFlags`) appears in `args`. Quote-aware, so `--help` inside a quoted value does NOT match; the attached form `--help=x` DOES.
+
+**`getLastFlagValue`** scans right-to-left so the LAST occurrence wins, matching how gh / cobra / pflag CLIs parse repeated flags (`getFlagValue` returns the FIRST). The second argument accepts a single flag or an alias set — gh treats `-t` and `--subject` as one logical flag, so aliases are OR'd at every scanned position:
+
+```ts
+// gh pr merge -t "see #13" --subject "closes #12"
+getLastFlagValue(ctx.input.args, ["-t", "--subject"]); // "closes #12"
+```
+
+It recognizes both `--flag=value` and `--flag value`, and is fail-closed on a trailing valueless flag: `gh pr merge -t foo --subject` returns `null` rather than falling back to the overridden `-t foo` (real pflag rejects that command line anyway). Like all helpers it is quote-aware via `.value`, so consumers migrating from hand-rolled `.text` + `unquote` scans get upgraded quote handling for free.
 
 All helpers are quote-aware (read `.value` before falling back to `.text`) and handle `undefined` input gracefully.
 

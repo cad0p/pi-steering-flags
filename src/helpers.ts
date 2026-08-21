@@ -93,6 +93,63 @@ export function getFlagValue(
 }
 
 /**
+ * Value associated with the LAST occurrence of `flag` in `args`, or
+ * `null` if the flag is absent or present-but-valueless.
+ *
+ * {@link getFlagValue} scans left-to-right, so the FIRST occurrence
+ * wins. Real CLIs disagree: gh / cobra / pflag are LAST-flag-wins \u2014
+ * `gh pr merge -t "see #13" --subject "closes #12"` keeps only the
+ * `--subject` value. Rule authors gating on such commands need the
+ * winning value, hence this mirror-image helper.
+ *
+ * The second parameter accepts a single flag OR an alias SET
+ * (`["-t", "--subject"]` \u2014 gh treats those spellings as one logical
+ * flag). Aliases are OR'd at every scanned position, so the winner is
+ * whichever alias occurrence comes last:
+ *
+ *   getLastFlagValue([W("-t"), W("see #13"),
+ *                     W("--subject"), W("closes #12")],
+ *                    ["-t", "--subject"]); // "closes #12"
+ *
+ * Recognizes the same two forms as {@link getFlagValue}, direction
+ * flipped:
+ *   - attached: `--flag=value`  \u2192 returns `"value"` (may be `""`)
+ *   - separated: `--flag value` \u2192 returns the NEXT token's value
+ *
+ * Like {@link getFlagValue}, the separated form does NOT inspect
+ * whether the next token looks like a flag, and quote-awareness is
+ * inherited (`.value` is read before `.text`) \u2014 adopters migrating
+ * from hand-rolled `.text` + `unquote` scans get correct handling of
+ * quoted values for free.
+ *
+ * Fail-closed edge: a TRAILING valueless occurrence wins over an
+ * earlier valued one \u2014 `cmd -t foo --subject` returns `null`, with NO
+ * fallback to the overridden `-t foo`. Real pflag rejects that command
+ * line anyway.
+ */
+export function getLastFlagValue(
+  args: readonly Word[] | undefined,
+  flags: string | readonly string[],
+): string | null {
+  const flagSet = typeof flags === "string" ? [flags] : flags;
+  const argsArr = args ?? [];
+  for (let i = argsArr.length - 1; i >= 0; i--) {
+    const t = wordValue(argsArr[i]);
+    for (const flag of flagSet) {
+      const prefix = `${flag}=`;
+      if (t.startsWith(prefix)) return t.slice(prefix.length);
+      if (t === flag) {
+        const next = argsArr[i + 1];
+        if (next === undefined) return null;
+        const nextVal = wordValue(next);
+        return nextVal === "" ? null : nextVal;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * `true` if `envAssignments` contains a shell env-var assignment
  * matching `name`. Shell env prefixes (`VAR=value cmd ...`) are
  * extracted by the walker into a separate slot on `ctx.input`; this
