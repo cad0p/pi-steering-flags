@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import type { Word } from "@cad0p/pi-steering";
 import {
   getFlagValue,
+  getLastFlagValue,
   hasEnvAssignment,
   hasFlag,
   INFO_FLAGS,
@@ -89,6 +90,185 @@ describe("getFlagValue", () => {
       getFlagValue([W("--profile"), W("--other-flag")], "--profile"),
       "--other-flag",
     );
+  });
+});
+
+describe("getLastFlagValue", () => {
+  it("issue #12 repro: last alias occurrence wins (--subject after -t)", () => {
+    // `gh pr merge -t "see #13" --subject "closes #12"` — gh keeps
+    // only the --subject value; -t and --subject are one logical flag.
+    assert.equal(
+      getLastFlagValue(
+        [W("-t"), W("see #13"), W("--subject"), W("closes #12")],
+        ["-t", "--subject"],
+      ),
+      "closes #12",
+    );
+  });
+
+  it("issue #12 repro reversed: -t after --subject wins", () => {
+    assert.equal(
+      getLastFlagValue(
+        [W("--subject"), W("closes #12"), W("-t"), W("see #13")],
+        ["-t", "--subject"],
+      ),
+      "see #13",
+    );
+  });
+
+  it("repeated same flag: last occurrence wins", () => {
+    // Contrast pin: getFlagValue is FIRST-wins — if a future refactor
+    // silently flips it to last-wins, this assertion fails and the
+    // two helpers' raison d'être collapses.
+    assert.equal(
+      getFlagValue(
+        [W("--profile"), W("a"), W("--profile"), W("b")],
+        "--profile",
+      ),
+      "a",
+    );
+    assert.equal(
+      getLastFlagValue(
+        [W("--profile"), W("a"), W("--profile"), W("b")],
+        "--profile",
+      ),
+      "b",
+    );
+  });
+
+  it("finds an attached form during the reverse scan", () => {
+    assert.equal(
+      getLastFlagValue(
+        [W("--subject=closes #12"), W("-t"), W("x")],
+        ["-t", "--subject"],
+      ),
+      "x",
+    );
+  });
+
+  it("mixed attached/separated across occurrences: separated-last wins", () => {
+    assert.equal(
+      getLastFlagValue([W("--subject=a"), W("--subject"), W("b")], "--subject"),
+      "b",
+    );
+  });
+
+  it("mixed attached/separated across occurrences: attached-last wins", () => {
+    assert.equal(
+      getLastFlagValue([W("--subject"), W("a"), W("--subject=b")], "--subject"),
+      "b",
+    );
+  });
+
+  it("attached-empty value wins regardless of neighbors", () => {
+    assert.equal(
+      getLastFlagValue([W("a"), W("--subject="), W("b")], "--subject"),
+      "",
+    );
+    assert.equal(
+      getLastFlagValue([W("a"), W("b"), W("--subject=")], "--subject"),
+      "",
+    );
+  });
+
+  it("attached-empty alone returns ''", () => {
+    assert.equal(getLastFlagValue([W("--subject=")], "--subject"), "");
+  });
+
+  it("single-string flags arg is equivalent to the array form", () => {
+    const args = [W("--profile"), W("dev")];
+    assert.equal(getLastFlagValue(args, "--profile"), "dev");
+    assert.equal(getLastFlagValue(args, ["--profile"]), "dev");
+  });
+
+  it("trailing flag is fail-closed: null, no fallback", () => {
+    assert.equal(getLastFlagValue([W("--subject")], "--subject"), null);
+    // The winning occurrence is the trailing valueless --subject;
+    // NO fallback to the earlier overridden --profile dev.
+    assert.equal(
+      getLastFlagValue([W("--profile"), W("dev"), W("--subject")], "--subject"),
+      null,
+    );
+  });
+
+  it("returns null when flag is absent", () => {
+    assert.equal(getLastFlagValue([W("other")], "--profile"), null);
+  });
+
+  it("returns null when args is undefined", () => {
+    assert.equal(getLastFlagValue(undefined, "--profile"), null);
+  });
+
+  it("returns null when args is empty", () => {
+    assert.equal(getLastFlagValue([], "--profile"), null);
+  });
+
+  it("returns the next token even if it looks like a flag (getFlagValue parity)", () => {
+    assert.equal(
+      getLastFlagValue([W("--profile"), W("--other")], ["--profile"]),
+      "--other",
+    );
+  });
+
+  it("separated form with empty next value returns null", () => {
+    assert.equal(getLastFlagValue([W("--subject"), W("")], "--subject"), null);
+  });
+
+  it("does not confuse prefix collisions (--profile-unrelated vs --profile)", () => {
+    assert.equal(
+      getLastFlagValue(
+        [W("--profile-unrelated"), W("--profile"), W("dev")],
+        "--profile",
+      ),
+      "dev",
+    );
+    assert.equal(getLastFlagValue([W("--subject-extra=x")], "--subject"), null);
+  });
+
+  it("quote-awareness: reads .value, never unquotes .text", () => {
+    // Migration shape: adopters of hand-rolled `.text` + unquote
+    // scans get upgraded quote handling for free.
+    const quoted = {
+      text: '"closes #12"',
+      value: "closes #12",
+      pos: 0,
+      end: 13,
+    } as Word;
+    assert.equal(
+      getLastFlagValue([W("--subject"), quoted], "--subject"),
+      "closes #12",
+    );
+  });
+
+  it("falls back to .text when .value is undefined", () => {
+    const rawOnly = {
+      text: "--subject=x",
+      value: undefined,
+      pos: 0,
+      end: 11,
+    } as unknown as Word;
+    assert.equal(getLastFlagValue([rawOnly], "--subject"), "x");
+  });
+
+  it("returns null on an empty alias array", () => {
+    assert.equal(getLastFlagValue([W("--subject"), W("x")], []), null);
+  });
+
+  it("adjacent duplicate bare flags: next token resolves the winner", () => {
+    assert.equal(
+      getLastFlagValue([W("--subject"), W("--subject"), W("x")], "--subject"),
+      "x",
+    );
+  });
+
+  it("trailing duplicate diverges from getFlagValue (intentional)", () => {
+    // `[--subject, --subject]`: the LAST occurrence is trailing-
+    // valueless, so last-wins returns null — while first-wins
+    // getFlagValue returns the next token "--subject" as the value.
+    // Intentional per spec D3; pinned so the divergence is visible.
+    const args = [W("--subject"), W("--subject")];
+    assert.equal(getLastFlagValue(args, "--subject"), null);
+    assert.equal(getFlagValue(args, "--subject"), "--subject");
   });
 });
 

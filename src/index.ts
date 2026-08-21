@@ -14,7 +14,7 @@
  *   - Keywords: `["pi-package", "pi-steering-package", ...]` for
  *     ecosystem discoverability via pi.dev and `npm search`.
  *   - PeerDep on `@cad0p/pi-steering` (pinned range once published).
- *   - Three predicates exported as a `Plugin`, four helpers exported
+ *   - Three predicates exported as a `Plugin`, five helpers exported
  *     for `when.condition` escape-hatch use.
  *
  * See this package's README for usage examples, and the pi-steering
@@ -142,6 +142,7 @@ export default flagsPlugin;
 
 export {
   getFlagValue,
+  getLastFlagValue,
   hasEnvAssignment,
   hasFlag,
   INFO_FLAGS,
