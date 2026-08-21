@@ -92,6 +92,45 @@ when: {
 }
 ```
 
+### `when.requiresFlagValue`
+
+Rule fires (command is BLOCKED) when the LAST-wins value of any of the listed flag aliases is absent, valueless, or does not satisfy `matches`. Last-wins matches how gh / cobra / pflag parse repeated flags — `gh pr merge -t "see #13" --subject "closes #12"` merges with the subject "closes #12", so that's the value a guardrail must evaluate.
+
+```ts
+requiresFlagValue: {
+  flags: readonly string[];  // aliases of ONE logical flag (OR'd)
+  matches: RegExp;           // pattern the effective value must satisfy
+}
+```
+
+Spread-only (no bare shorthand: it needs both fields), like `allowlistedFlagsOnly`.
+
+**Absence is fail-closed**: a flag that isn't there at all counts as unmet — a rule requiring a matching value must block when it can't verify one. A trailing valueless flag (`gh pr merge -t foo --subject`) also fires, with no fallback to the overridden `-t foo`. Malformed args (missing / empty / non-string `flags`, non-RegExp `matches`) are the exception: they fail open, same precedent as `requiresFlag`'s empty-object behavior.
+
+**Worked example** — `gh pr merge` must reference the issue it closes in its subject — a closing keyword or any bare `#N` reference (help invocations still pass via the info-only carve-out):
+
+```ts
+{
+  name: "pr-merge-needs-closing-keyword",
+  tool: "bash",
+  field: "command",
+  pattern: /^gh pr merge\b/,
+  when: {
+    not: { infoOnly: { extraFlags: ["-h"] } },
+    requiresFlagValue: {
+      flags: ["--subject", "-t"],
+      matches: /\b(closes?|fixe?s?|resolves?)\s+#\d+\b|(^|\s)#\d+/i,
+    },
+  },
+  reason:
+    "gh pr merge should reference the issue it closes — pass --subject (or -t) with a closing keyword.",
+}
+```
+
+One parsing asymmetry to know: an attached-empty flag (`--subject=`) yields the real value `""` (which won't match, so the rule fires), while a separated-empty one (`--subject ""`) reads as valueless (`null`) and fires too.
+
+Like the underlying helper, the separated form takes the next token blindly as the value: `--subject --force` reads the value as `"--force"` (which won't match, so the rule fires). Callers who need stricter parsing should post-check inside a `when.condition`.
+
 ### `when.allowlistedFlagsOnly`
 
 Rule fires when any `-`-prefixed token is present that isn't in the allowlist.

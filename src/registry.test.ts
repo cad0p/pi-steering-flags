@@ -191,6 +191,26 @@ describe("pi-steering-flags PiSteeringPredicates registry", () => {
     });
   });
 
+  it("requiresFlagValue accepts the spread form inside `when:`", () => {
+    withScratch("rfv-spread", (scratchDir) => {
+      const source =
+        IMPORT_HEADER +
+        "const r = {\n" +
+        RULE_PROLOGUE +
+        '\n\twhen: { requiresFlagValue: { flags: ["--subject", "-t"], matches: /closes/i } },\n' +
+        "} as const satisfies Rule;\n" +
+        "export default defineConfig({ rules: [r] });\n";
+      const diagnostics = compile(scratchDir, source);
+      assert.deepEqual(
+        diagnostics.map((d) =>
+          ts.flattenDiagnosticMessageText(d.messageText, "\n"),
+        ),
+        [],
+        "requiresFlagValue spread form should typecheck",
+      );
+    });
+  });
+
   it("rejects unknown predicate names \u2014 registry is the source of truth", () => {
     withScratch("unknown-key", (scratchDir) => {
       const source =
