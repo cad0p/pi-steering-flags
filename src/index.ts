@@ -14,7 +14,7 @@
  *   - Keywords: `["pi-package", "pi-steering-package", ...]` for
  *     ecosystem discoverability via pi.dev and `npm search`.
  *   - PeerDep on `@cad0p/pi-steering` (pinned range once published).
- *   - Three predicates exported as a `Plugin`, five helpers exported
+ *   - Four predicates exported as a `Plugin`, five helpers exported
  *     for `when.condition` escape-hatch use.
  *
  * See this package's README for usage examples, and the pi-steering
@@ -31,10 +31,12 @@ import type { Plugin, PredicateShape } from "@cad0p/pi-steering";
 import { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
 import { infoOnly } from "./predicates/info-only.ts";
 import { requiresFlag } from "./predicates/requires-flag.ts";
+import { requiresFlagValue } from "./predicates/requires-flag-value.ts";
 import type {
   AllowlistedFlagsOnlyArgs,
   InfoOnlyArgs,
   RequiresFlagArgs,
+  RequiresFlagValueArgs,
 } from "./types.ts";
 
 declare global {
@@ -46,9 +48,9 @@ declare global {
    * `& PredicateModifiers` (outer leaf) or at the not-block top level
    * (inside `not:`).
    *
-   * Both predicates read `ctx.input.args` / `ctx.input.envAssignments`
-   * — they don't depend on the walker's effective cwd, so neither
-   * predicate carries a walker-unknown-cwd guard. The `onUnknown:`
+   * All predicates read `ctx.input.args` / `ctx.input.envAssignments`
+   * — they don't depend on the walker's effective cwd, so none of
+   * the predicates carries a walker-unknown-cwd guard. The `onUnknown:`
    * modifier still applies if a handler explicitly returns the
    * `"unknown"` sentinel; current handlers return only `boolean`.
    *
@@ -117,6 +119,16 @@ declare global {
      * info-only), the opposite of a carve-out.
      */
     infoOnly: PredicateShape<boolean, InfoOnlyArgs>;
+
+    /**
+     * `when.requiresFlagValue` — fires (rule BLOCKS) when the LAST-wins
+     * value of any listed flag alias is missing or doesn't match
+     * `matches`. Absent flag counts as unmet (fail-closed).
+     *
+     * Spread-only (no bare shorthand: needs ≥2 fields), like
+     * `allowlistedFlagsOnly`.
+     */
+    requiresFlagValue: PredicateShape<RequiresFlagValueArgs>;
   }
 }
 
@@ -135,6 +147,7 @@ export const flagsPlugin = {
     requiresFlag,
     allowlistedFlagsOnly,
     infoOnly,
+    requiresFlagValue,
   },
 } as const satisfies Plugin;
 
@@ -153,8 +166,10 @@ export { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
 // just one predicate or a helper.
 export { infoOnly } from "./predicates/info-only.ts";
 export { requiresFlag } from "./predicates/requires-flag.ts";
+export { requiresFlagValue } from "./predicates/requires-flag-value.ts";
 export type {
   AllowlistedFlagsOnlyArgs,
   InfoOnlyArgs,
   RequiresFlagArgs,
+  RequiresFlagValueArgs,
 } from "./types.ts";
