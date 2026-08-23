@@ -61,73 +61,48 @@ export function hasFlag(
 }
 
 /**
- * Value associated with `flag` in `args`, or `null` if the flag is
- * absent or present-but-valueless.
+ * Value associated with the LAST occurrence of any listed flag alias
+ * in `args`, or `null` if the flag is absent or present-but-valueless.
  *
- * Recognizes two forms:
- *   - attached: `--flag=value`  \u2192 returns `"value"`
- *   - separated: `--flag value` \u2192 returns the NEXT token's value
- *
- * The separated form does NOT inspect whether the next token looks
- * like a flag \u2014 some CLIs accept `--flag --next-flag` and treat
- * `--next-flag` as the value. Callers who want a strict form should
- * post-check the return value.
- */
-export function getFlagValue(
-  args: readonly Word[] | undefined,
-  flag: string,
-): string | null {
-  const prefix = `${flag}=`;
-  const argsArr = args ?? [];
-  for (let i = 0; i < argsArr.length; i++) {
-    const t = wordValue(argsArr[i]);
-    if (t.startsWith(prefix)) return t.slice(prefix.length);
-    if (t === flag) {
-      const next = argsArr[i + 1];
-      if (next === undefined) return null;
-      const nextVal = wordValue(next);
-      return nextVal === "" ? null : nextVal;
-    }
-  }
-  return null;
-}
-
-/**
- * Value associated with the LAST occurrence of `flag` in `args`, or
- * `null` if the flag is absent or present-but-valueless.
- *
- * {@link getFlagValue} scans left-to-right, so the FIRST occurrence
- * wins. Real CLIs disagree: gh / cobra / pflag are LAST-flag-wins \u2014
- * `gh pr merge -t "see #13" --subject "closes #12"` keeps only the
- * `--subject` value. Rule authors gating on such commands need the
- * winning value, hence this mirror-image helper.
+ * **LAST-flag-wins**: the scan runs RIGHT→LEFT, so the highest-index
+ * occurrence wins — the effective value under every real argv parser.
+ * This supersedes this helper's 0.1.0 form, which scanned left-to-
+ * right (FIRST occurrence won, single flag only): first-wins models
+ * no real parser — argparse / cobra / pflag all default to last-flag-
+ * wins, and CLIs like gh collapse repeated spellings of one logical
+ * flag to its final value.
  *
  * The second parameter accepts a single flag OR an alias SET
- * (`["-t", "--subject"]` \u2014 gh treats those spellings as one logical
+ * (`["-t", "--subject"]` — gh treats those spellings as one logical
  * flag). Aliases are OR'd at every scanned position, so the winner is
  * whichever alias occurrence comes last:
  *
- *   getLastFlagValue([W("-t"), W("see #13"),
- *                     W("--subject"), W("closes #12")],
- *                    ["-t", "--subject"]); // "closes #12"
+ *   // gh pr merge -t "see #13" --subject "closes #12"
+ *   getFlagValue([W("-t"), W("see #13"),
+ *                 W("--subject"), W("closes #12")],
+ *                ["--subject", "-t"]); // "closes #12"
  *
- * Recognizes the same two forms as {@link getFlagValue}, direction
- * flipped:
- *   - attached: `--flag=value`  \u2192 returns `"value"` (may be `""`)
- *   - separated: `--flag value` \u2192 returns the NEXT token's value
+ * Recognizes two forms:
+ *   - attached: `--flag=value`  → returns `"value"` (may be `""`)
+ *   - separated: `--flag value` → returns the NEXT token's value
  *
- * Like {@link getFlagValue}, the separated form does NOT inspect
- * whether the next token looks like a flag, and quote-awareness is
- * inherited (`.value` is read before `.text`) \u2014 adopters migrating
- * from hand-rolled `.text` + `unquote` scans get correct handling of
- * quoted values for free.
+ * The separated form does NOT inspect whether the next token looks
+ * like a flag — some CLIs accept `--flag --next-flag` and treat
+ * `--next-flag` as the value. Callers who want a strict form should
+ * post-check the return value.
  *
  * Fail-closed edge: a TRAILING valueless occurrence wins over an
- * earlier valued one \u2014 `cmd -t foo --subject` returns `null`, with NO
+ * earlier valued one — `cmd -t foo --subject` returns `null`, with NO
  * fallback to the overridden `-t foo`. Real pflag rejects that command
  * line anyway.
+ *
+ * Matching is exact token equality or the `${flag}=` attached prefix,
+ * so prefix collisions are safe (`--profile-foo` ≠ `--profile`).
+ * Quote-awareness is inherited (`.value` is read before `.text`) —
+ * adopters migrating from hand-rolled `.text` + `unquote` scans get
+ * correct handling of quoted values for free.
  */
-export function getLastFlagValue(
+export function getFlagValue(
   args: readonly Word[] | undefined,
   flags: string | readonly string[],
 ): string | null {
