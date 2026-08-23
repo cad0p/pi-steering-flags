@@ -12,7 +12,6 @@ All notable changes to this project will be documented in this file.
 
 - Token-level info-only detection — isInfoOnly + when.infoOnly (closes #13)
 - GetFlagValue goes last-flag-wins and alias-aware (closes #12)
-- When.requiresFlagValue — declarative last-flag-value-matches predicate (closes #17)
 
 ### 🐛 Bug Fixes
 
