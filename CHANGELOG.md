@@ -2,16 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.1] - 2026-08-23
+## [0.1.1] - 2026-08-24
 
-### ⚠️ Breaking Changes
-
-- **`getFlagValue` is now last-flag-wins and alias-aware**: repeated scalar flags resolve to the last occurrence (matching argparse/pflag/clap), and `flags` accepts an array of aliases OR-ed per position. The planned `getLastFlagValue` sibling was dropped — migrate cross-alias lookups to `getFlagValue(args, ["-R", "--repo"])`. (closes #12)
+<!-- USER-EDITABLE SECTION START -->
+<!-- Add your curated release notes here. -->
+<!-- USER-EDITABLE SECTION END -->
 
 ### 🚀 Features
 
-- When.requiresFlagValue — declarative last-flag-value-matches predicate (closes #17)
 - Token-level info-only detection — isInfoOnly + when.infoOnly (closes #13)
+- GetFlagValue goes last-flag-wins and alias-aware (closes #12)
+- When.requiresFlagValue — declarative last-flag-value-matches predicate (closes #17)
 
 ### 🐛 Bug Fixes
 
