@@ -153,6 +153,7 @@ export const flagsPlugin = {
 
 export default flagsPlugin;
 
+export type { FlagLookupOptions } from "./helpers.ts";
 export {
   getFlagValue,
   hasEnvAssignment,

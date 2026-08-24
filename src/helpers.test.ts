@@ -4,6 +4,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Word } from "@cad0p/pi-steering";
+import type { FlagLookupOptions } from "./helpers.ts";
 import {
   getFlagValue,
   hasEnvAssignment,
@@ -349,5 +350,258 @@ describe("isInfoOnly", () => {
 
   it("returns false on empty args", () => {
     assert.equal(isInfoOnly([]), false);
+  });
+});
+
+describe("glued short flags (issue #11)", () => {
+  // `gh -Rc/d` — the walker keeps `-Rc/d` as ONE argv word.
+
+  describe("default blindness (ShellCheck-norm fail-closed)", () => {
+    it("getFlagValue does NOT decompose -Rcad0p/x without opt-in", () => {
+      assert.equal(getFlagValue([W("-Rcad0p/x")], "-R"), null);
+      assert.equal(getFlagValue([W("-Rcad0p/x")], ["-R", "--repo"]), null);
+    });
+
+    it("hasFlag does NOT match -Rcad0p/x without opt-in", () => {
+      assert.equal(hasFlag([W("-Rcad0p/x")], "-R"), false);
+      assert.equal(hasFlag([W("-Rcad0p/x")], ["-R", "--repo"]), false);
+    });
+  });
+
+  describe("glue-enabled resolution", () => {
+    const glue = { gluedShorts: ["R"] };
+
+    it("resolves the glued form -Rx/y", () => {
+      assert.equal(
+        getFlagValue(
+          [W("gh"), W("-Rcad0p/x"), W("pr"), W("create")],
+          ["-R", "--repo"],
+          glue,
+        ),
+        "cad0p/x",
+      );
+    });
+
+    it("attached-empty -R= still resolves to the empty string", () => {
+      assert.equal(getFlagValue([W("-R=")], ["-R"], glue), "");
+    });
+
+    it("exact -R + next token unchanged under glue opt-in", () => {
+      assert.equal(getFlagValue([W("-R"), W("c/d")], ["-R"], glue), "c/d");
+    });
+
+    it("trailing valueless -R stays fail-closed null", () => {
+      assert.equal(
+        getFlagValue([W("pr"), W("merge"), W("-R")], ["-R"], glue),
+        null,
+      );
+    });
+
+    it("single-string flags arg accepts the options bag too", () => {
+      assert.equal(getFlagValue([W("-Rc/d")], "-R", glue), "c/d");
+    });
+  });
+
+  describe("per-position precedence: exact > attached > glued", () => {
+    const glue = { gluedShorts: ["R"] };
+
+    it("attached-empty beats glued rest (-R= is '', not '=')", () => {
+      // Glued on `-R` would read the rest '=' as the value; the attached
+      // form must win with the documented empty-string contract.
+      assert.equal(getFlagValue([W("-R=")], ["-R"], glue), "");
+    });
+
+    it("pathological aliases: attached on -Rx wins over glued on -R", () => {
+      // Exact can never match a token containing '='. Attached runs
+      // before glued: alias '-Rx' (declared first) yields 'y'. If
+      // precedence ever flipped to glued-first, '-R' + rest would
+      // yield 'x=y' instead — this pin makes that regression loud.
+      assert.equal(getFlagValue([W("-Rx=y")], ["-Rx", "-R"], glue), "y");
+    });
+  });
+
+  describe("last-wins across mixed forms", () => {
+    const glue = { gluedShorts: ["R"] };
+    const flags = ["-R", "--repo"];
+
+    it("separated then glued: last occurrence wins", () => {
+      assert.equal(
+        getFlagValue(
+          [W("gh"), W("-R"), W("a/b"), W("pr"), W("merge"), W("-Rc/d")],
+          flags,
+          glue,
+        ),
+        "c/d",
+      );
+    });
+
+    it("long separated then glued short: glued wins", () => {
+      assert.equal(
+        getFlagValue(
+          [W("gh"), W("--repo"), W("a/b"), W("pr"), W("merge"), W("-Rc/d")],
+          flags,
+          glue,
+        ),
+        "c/d",
+      );
+    });
+
+    it("ambiguity ruling: trailing bare -R over earlier --repo a/b -> null", () => {
+      // The issue matrix's `gh --repo a/b pr merge -Rc/d` line compresses
+      // THIS case: the trailing VALUELESS occurrence wins, fail-closed,
+      // with NO fallback to the overridden --repo a/b.
+      assert.equal(
+        getFlagValue(
+          [W("gh"), W("--repo"), W("a/b"), W("pr"), W("merge"), W("-R")],
+          flags,
+          glue,
+        ),
+        null,
+      );
+    });
+  });
+
+  describe("bundling safety", () => {
+    it("undeclared lead letter never decomposes (docker -vf alpine, f declared)", () => {
+      const args = [W("run"), W("-vf"), W("alpine")];
+      const glue = { gluedShorts: ["f"] };
+      assert.equal(getFlagValue(args, ["-v", "-f"], glue), null);
+      assert.equal(hasFlag(args, ["-v", "-f"], glue), false);
+      assert.equal(hasFlag(args, "-f", glue), false);
+    });
+
+    it("irrelevant declared letter leaves -vf untouched", () => {
+      const args = [W("-vf"), W("alpine")];
+      assert.equal(getFlagValue(args, ["-R"], { gluedShorts: ["R"] }), null);
+      assert.equal(hasFlag(args, ["-v", "-f"], { gluedShorts: ["R"] }), false);
+    });
+
+    it("declared lead letter consumes its remainder (-fv, f declared)", () => {
+      assert.equal(
+        getFlagValue([W("-fv")], ["-f"], { gluedShorts: ["f"] }),
+        "v",
+      );
+    });
+
+    it("two declared letters: FIRST letter owns the rest (-vf, v+f)", () => {
+      assert.equal(
+        getFlagValue([W("-vf")], ["-v", "-f"], { gluedShorts: ["v", "f"] }),
+        "f",
+      );
+    });
+  });
+
+  describe("eligibility guards", () => {
+    const glue = { gluedShorts: ["R"] };
+    const flags = ["-R", "--repo"];
+
+    it("--repo=cad0p/x still attached-resolves", () => {
+      assert.equal(getFlagValue([W("--repo=cad0p/x")], flags, glue), "cad0p/x");
+    });
+
+    it("--repo cad0p/x separated unchanged", () => {
+      assert.equal(
+        getFlagValue([W("--repo"), W("cad0p/x")], flags, glue),
+        "cad0p/x",
+      );
+    });
+
+    it("double-dash tokens are never glued (--Rx/y)", () => {
+      assert.equal(getFlagValue([W("--Rx/y")], flags, glue), null);
+      assert.equal(hasFlag([W("--Rx/y")], flags, glue), false);
+    });
+
+    it("glue letter without its own -X alias in the query set: no glue", () => {
+      // gluedShorts ['R'] but only --repo queried: the intersection is
+      // empty, so -Ra/b stays opaque and the separated long form wins.
+      assert.equal(
+        getFlagValue([W("--repo"), W("a/b")], ["--repo"], glue),
+        "a/b",
+      );
+      assert.equal(getFlagValue([W("-Ra/b")], ["--repo"], glue), null);
+    });
+
+    it("multi-char shorts never become glue-eligible", () => {
+      // '-xy' is not a single-letter alias, so declaring 'z' grants nothing.
+      assert.equal(
+        getFlagValue([W("-xyz")], ["-xy"], { gluedShorts: ["z"] }),
+        null,
+      );
+    });
+  });
+
+  describe("quote-awareness", () => {
+    const glue = { gluedShorts: ["R"] };
+
+    it("glued token resolves via .value when .value differs from .text", () => {
+      // `gh -R"c/x"` — raw source keeps the quotes; the walker's resolved
+      // value strips them, and THAT is what gets decomposed.
+      const quoted = {
+        text: '-R"c/x"',
+        value: "-Rc/x",
+        pos: 0,
+        end: 8,
+      } as Word;
+      assert.equal(getFlagValue([quoted], ["-R"], glue), "c/x");
+      assert.equal(hasFlag([quoted], ["-R"], glue), true);
+    });
+
+    it("falls back to .text when .value is undefined (glued too)", () => {
+      const rawOnly = {
+        text: "-Rc/d",
+        value: undefined,
+        pos: 0,
+        end: 5,
+      } as unknown as Word;
+      assert.equal(getFlagValue([rawOnly], ["-R"], glue), "c/d");
+    });
+  });
+
+  describe("malformed options fail open (identical to omitted)", () => {
+    const args = [W("-Rc/d")];
+    const flags = ["-R", "--repo"];
+
+    it("empty options object behaves like omitted", () => {
+      assert.equal(getFlagValue(args, flags, {}), null);
+      assert.equal(hasFlag(args, flags, {}), false);
+    });
+
+    it("empty gluedShorts behaves like omitted", () => {
+      assert.equal(getFlagValue(args, flags, { gluedShorts: [] }), null);
+      assert.equal(hasFlag(args, flags, { gluedShorts: [] }), false);
+    });
+
+    it("non-single-char letters are ignored", () => {
+      const bad = { gluedShorts: ["RR"] };
+      assert.equal(getFlagValue(args, flags, bad), null);
+      assert.equal(hasFlag(args, flags, bad), false);
+    });
+
+    it("runtime garbage entries are ignored (house fail-open precedent)", () => {
+      const bad = { gluedShorts: [123] } as unknown as FlagLookupOptions;
+      assert.equal(getFlagValue(args, flags, bad), null);
+      assert.equal(hasFlag(args, flags, bad), false);
+    });
+  });
+
+  describe("hasFlag mirrors", () => {
+    it("true for the glued form when opted in (scalar and alias set)", () => {
+      assert.equal(hasFlag([W("-Rc/d")], "-R", { gluedShorts: ["R"] }), true);
+      assert.equal(
+        hasFlag([W("-Rc/d")], ["-R", "--repo"], { gluedShorts: ["R"] }),
+        true,
+      );
+    });
+
+    it("false for undeclared-letter bundles even when another letter is declared", () => {
+      assert.equal(
+        hasFlag([W("-vf")], ["-v", "-f"], { gluedShorts: ["f"] }),
+        false,
+      );
+    });
+
+    it("false without opt-in (default blindness mirror)", () => {
+      assert.equal(hasFlag([W("gh"), W("-Rc/d")], ["-R", "--repo"]), false);
+    });
   });
 });
