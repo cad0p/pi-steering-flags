@@ -1,6 +1,6 @@
 {
   "name": "@cad0p/pi-steering-flags",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Declarative flag-presence and flag-allowlist predicates for pi-steering rules. First official external plugin.",
   "keywords": [
