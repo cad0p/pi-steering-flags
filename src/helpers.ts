@@ -36,26 +36,124 @@ function* iterWords(
   for (const w of words) yield w;
 }
 
+/** Options for {@link hasFlag} / {@link getFlagValue}. */
+export interface FlagLookupOptions {
+  /**
+   * Letters X whose GLUED short form `-X<value>` (one argv word) resolves.
+   * Opt-in: absent/empty keeps the ShellCheck-norm blind default.
+   * Only letters whose own `-X` alias is in the queried flag set apply.
+   */
+  gluedShorts?: readonly string[];
+}
+
+/** Shared empty set so the no-glue fast path never allocates. */
+const EMPTY_GLUE_LETTERS: ReadonlySet<string> = new Set<string>();
+
 /**
- * `true` if `args` contains `flag` as a bare token or as the key of an
- * attached-value `flag=value` token.
+ * Letters eligible for glued-short decomposition: the declared
+ * `gluedShorts` intersected with the letters of ELIGIBLE aliases
+ * (single-dash single-letter shorts) in the queried flag set. Long
+ * aliases (`--repo`) and multi-char shorts (`-xy`) are never eligible,
+ * and malformed option entries fail open (ignored ⇒ no glue).
  *
- * Quote-aware (reads `.value` first, falls back to `.text`).
+ * An empty result makes {@link matchFlagAt} behave exactly like the
+ * pre-gluedShorts helpers — byte-for-byte default behavior.
+ */
+function glueLettersFor(
+  flags: string | readonly string[],
+  opts?: FlagLookupOptions,
+): ReadonlySet<string> {
+  const raw = opts?.gluedShorts;
+  // Fail-open guard: a non-array gluedShorts ("RR", 123, …) degrades to
+  // the blind default instead of iterating chars or throwing.
+  const declared: readonly unknown[] = Array.isArray(raw) ? raw : [];
+  if (declared.length === 0) return EMPTY_GLUE_LETTERS;
+  const flagAliases = typeof flags === "string" ? [flags] : flags;
+  const letters = new Set<string>();
+  for (const entry of declared) {
+    // Fail-open on malformed entries (house precedent): non-array /
+    // non-string / non-single-char letters are ignored ⇒ no glue.
+    if (typeof entry !== "string" || entry.length !== 1) continue;
+    for (const alias of flagAliases) {
+      if (alias.length === 2 && alias[0] === "-" && alias[1] === entry) {
+        letters.add(entry);
+        break;
+      }
+    }
+  }
+  return letters;
+}
+
+/**
+ * How a single argv word matches the queried flag set at one scanned
+ * position. Precedence (checked in this order, shared by BOTH helpers):
+ *   1. exact token           → separated form, consult next token
+ *   2. attached `${alias}=`  → value carried (may be empty string)
+ *   3. glued `-X<rest>`      → value `<rest>`, iff X ∈ glueLetters
+ */
+type FlagMatch =
+  | { kind: "exact" }
+  | { kind: "attached"; value: string }
+  | { kind: "glued"; value: string };
+
+/**
+ * Match one argv word against the flag aliases at a single position.
+ * Bundling-safe: only declared single letters split off a glued value,
+ * and only when the remainder is non-empty (`-vf` never reads as `-v`
+ * plus value `f` unless `v` was declared AND owns the lead).
+ */
+function matchFlagAt(
+  wordText: string,
+  flagAliases: readonly string[],
+  glueLetters: ReadonlySet<string>,
+): FlagMatch | undefined {
+  // Plan-prescribed precedence: exact-before-attached — observable vs 0.1.x only for degenerate alias sets containing an `=`-bearing alias (e.g. ["--flag", "--flag="]).
+  for (const alias of flagAliases) {
+    if (wordText === alias) return { kind: "exact" };
+  }
+  for (const alias of flagAliases) {
+    const prefix = `${alias}=`;
+    if (wordText.startsWith(prefix)) {
+      return { kind: "attached", value: wordText.slice(prefix.length) };
+    }
+  }
+  if (wordText.length > 2 && wordText[0] === "-") {
+    const lead = wordText[1];
+    if (lead !== undefined && lead !== "-" && glueLetters.has(lead)) {
+      return { kind: "glued", value: wordText.slice(2) };
+    }
+  }
+  return undefined;
+}
+
+/**
+ * `true` if `args` contains any listed flag as a bare token, as the key
+ * of an attached-value `flag=value` token, or — when opted in via
+ * {@link FlagLookupOptions.gluedShorts} — as a glued short form
+ * `-X<value>` carrying its value inline (`gh -Rc/d` keeps `-Rc/d` as
+ * ONE argv word).
+ *
+ * Accepts a single flag or an alias SET (OR'd at every scanned
+ * position), mirroring {@link getFlagValue}. Quote-aware (reads
+ * `.value` first, falls back to `.text`).
  *
  * @example
  *   hasFlag([W("--profile"), W("dev")], "--profile");    // true  (bare)
  *   hasFlag([W("--profile=dev")], "--profile");          // true  (attached)
  *   hasFlag([W("--profile-foo")], "--profile");          // false (prefix collision avoided)
+ *   hasFlag([W("-Rc/d")], "-R", { gluedShorts: ["R"] }); // true  (glued, opt-in)
  */
 export function hasFlag(
   args: readonly Word[] | undefined,
-  flag: string,
+  flag: string | readonly string[],
+  opts?: FlagLookupOptions,
 ): boolean {
-  const prefix = `${flag}=`;
+  const flagSet = typeof flag === "string" ? [flag] : flag;
+  const glueLetters = glueLettersFor(flagSet, opts);
   for (const w of iterWords(args)) {
-    const t = wordValue(w);
-    if (t === flag) return true;
-    if (t.startsWith(prefix)) return true;
+    if (matchFlagAt(wordValue(w), flagSet, glueLetters) !== undefined) {
+      return true;
+    }
   }
   return false;
 }
@@ -82,9 +180,20 @@ export function hasFlag(
  *                 W("--subject"), W("closes #12")],
  *                ["-t", "--subject"]); // "closes #12"
  *
- * Recognizes two forms:
+ * Recognizes three forms (precedence per scanned position):
+ *   - exact:     `--flag`       → separated form: NEXT token's value
  *   - attached: `--flag=value`  → returns `"value"` (may be `""`)
- *   - separated: `--flag value` → returns the NEXT token's value
+ *   - glued:     `-X<rest>`     → returns `<rest>` (opt-in ONLY, via
+ *                 {@link FlagLookupOptions.gluedShorts}: the walker keeps
+ *                 `gh -Rc/d`'s `-Rc/d` as ONE argv word)
+ *
+ * Glued decomposition is opt-in per LETTER and bundling-safe: with
+ * `gluedShorts: ["f"]`, docker's `-vf alpine` matches NOTHING (the
+ * bundle starts with the undeclared `-v`); a declared lead letter
+ * consumes its remainder (`-fv` → flag `f`, value `v`). Blanket
+ * decomposition is unsound because POSIX CLIs accept glued values AND
+ * bundling simultaneously — telling them apart requires per-CLI arity
+ * knowledge the caller must assert.
  *
  * The separated form does NOT inspect whether the next token looks
  * like a flag — some CLIs accept `--flag --next-flag` and treat
@@ -105,21 +214,21 @@ export function hasFlag(
 export function getFlagValue(
   args: readonly Word[] | undefined,
   flags: string | readonly string[],
+  opts?: FlagLookupOptions,
 ): string | null {
   const flagSet = typeof flags === "string" ? [flags] : flags;
+  const glueLetters = glueLettersFor(flagSet, opts);
   const argsArr = args ?? [];
   for (let i = argsArr.length - 1; i >= 0; i--) {
-    const t = wordValue(argsArr[i]);
-    for (const flag of flagSet) {
-      const prefix = `${flag}=`;
-      if (t.startsWith(prefix)) return t.slice(prefix.length);
-      if (t === flag) {
-        const next = argsArr[i + 1];
-        if (next === undefined) return null;
-        const nextVal = wordValue(next);
-        return nextVal === "" ? null : nextVal;
-      }
+    const match = matchFlagAt(wordValue(argsArr[i]), flagSet, glueLetters);
+    if (!match) continue;
+    if (match.kind === "exact") {
+      const next = argsArr[i + 1];
+      if (next === undefined) return null;
+      const nextVal = wordValue(next);
+      return nextVal === "" ? null : nextVal;
     }
+    return match.value;
   }
   return null;
 }

@@ -203,8 +203,8 @@ when: {
 }
 ```
 
-- `hasFlag(args, flag)` — bare or `flag=value` form.
-- `getFlagValue(args, flags)` — LAST-flag-wins value lookup; `flags` is a single flag or an alias set. Recognizes separated `flag value` and attached `flag=value`; fail-closed on a trailing valueless flag.
+- `hasFlag(args, flag, options?)` — presence check: bare, attached `flag=value`, or — when opted in — glued `-X<value>`. `flag` is a single flag or an alias set.
+- `getFlagValue(args, flags, options?)` — LAST-flag-wins value lookup; `flags` is a single flag or an alias set. Recognizes separated `flag value`, attached `flag=value`, and (opt-in) glued `-X<value>`; fail-closed on a trailing valueless flag.
 - `hasEnvAssignment(envAssignments, name)` — literal env-var name match.
 - `INFO_FLAGS` — the default info-only set (`["--help", "--version"]`).
 - `isInfoOnly(args, extraFlags?)` — token-level info-only detection: true when any of `INFO_FLAGS` (plus optional additive `extraFlags`) appears in `args`. Quote-aware, so `--help` inside a quoted value does NOT match; the attached form `--help=x` DOES.
@@ -217,6 +217,26 @@ getFlagValue(ctx.input.args, ["-t", "--subject"]); // "closes #12"
 ```
 
 It recognizes both `--flag=value` and `--flag value`, and is fail-closed on a trailing valueless flag: `gh pr merge -t foo --subject` returns `null` rather than falling back to the overridden `-t foo` (real pflag rejects that command line anyway). Like all helpers it is quote-aware via `.value`, so consumers migrating from hand-rolled `.text` + `unquote` scans get upgraded quote handling for free.
+
+**Opt-in glued short flags** — both helpers take an optional third argument, `FlagLookupOptions`. By default they are blind to the glued short form `-X<value>` (`gh -Rcad0p/x` reaches the helpers as ONE argv word). Declaring the flag's letters turns decomposition on:
+
+```ts
+// gh -Rc/d pr merge  →  the walker keeps "-Rc/d" as a single argv word
+getFlagValue(ctx.input.args, ["-R", "--repo"], { gluedShorts: ["R"] }); // "c/d"
+hasFlag(ctx.input.args, "-R", { gluedShorts: ["R"] });                  // true
+getFlagValue(ctx.input.args, ["-R", "--repo"]);                         // null (blind default)
+```
+
+Why opt-in per letter? POSIX lets one CLI accept glued values AND bundling simultaneously: `-vf` may be the bundle `-v -f`, not `-v` plus value `f`. Blanket prefix decomposition misreads real commands like `docker run -it` or `rm -rf` — only you know your CLI's arity, so you declare it.
+
+Once opted in:
+
+- Only single-dash single-letter aliases whose letter is declared ever split (`-R` under `gluedShorts: ["R"]`). Long forms (`--repo=cad0p/x`, `--repo cad0p/x`) and double-dash tokens are never decomposed.
+- Bundling stays safe: with `gluedShorts: ["f"]`, docker's `-vf alpine` matches NOTHING (the bundle starts with the undeclared `-v`); a declared lead letter consumes its remainder as the value (`-fv` → flag `f`, value `"v"`).
+- Per-position precedence: exact `-R` > attached `-R=x` > glued `-R<rest>` — the glued value is the whole remainder.
+- Everything else carries over unchanged: right-to-left last-wins across mixed forms (`gh -R a/b pr merge -Rc/d` → `"c/d"`), quote-awareness, and the trailing-valueless fail-closed rule (`gh --repo a/b pr merge -R` → `null`, no fallback).
+
+Malformed options fail open (house precedent): non-array, empty, non-string, or multi-char entries in `gluedShorts` are ignored, degrading to the blind default.
 
 All helpers are quote-aware (read `.value` before falling back to `.text`) and handle `undefined` input gracefully.
 
