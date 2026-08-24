@@ -4,9 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [0.1.1] - 2026-08-24
 
-### ⚠️ Breaking Changes
-
-- **`getFlagValue` is now last-flag-wins and alias-aware**: repeated scalar flags resolve to the last occurrence (matching argparse/pflag/clap), and `flags` accepts an array of aliases OR-ed per position. The planned `getLastFlagValue` sibling was dropped — migrate cross-alias lookups to `getFlagValue(args, ["-R", "--repo"])`. (closes #12)
+<!-- USER-EDITABLE SECTION START -->
+<!-- Add your curated release notes here. -->
+<!-- USER-EDITABLE SECTION END -->
 
 ### 🚀 Features
 
