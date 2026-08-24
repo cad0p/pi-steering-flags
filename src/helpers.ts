@@ -63,7 +63,10 @@ function glueLettersFor(
   flags: string | readonly string[],
   opts?: FlagLookupOptions,
 ): ReadonlySet<string> {
-  const declared: readonly unknown[] = opts?.gluedShorts ?? [];
+  const raw = opts?.gluedShorts;
+  // Fail-open guard: a non-array gluedShorts ("RR", 123, …) degrades to
+  // the blind default instead of iterating chars or throwing.
+  const declared: readonly unknown[] = Array.isArray(raw) ? raw : [];
   if (declared.length === 0) return EMPTY_GLUE_LETTERS;
   const flagAliases = typeof flags === "string" ? [flags] : flags;
   const letters = new Set<string>();
@@ -104,6 +107,7 @@ function matchFlagAt(
   flagAliases: readonly string[],
   glueLetters: ReadonlySet<string>,
 ): FlagMatch | undefined {
+  // Plan-prescribed precedence: exact-before-attached — observable vs 0.1.x only for degenerate alias sets containing an `=`-bearing alias (e.g. ["--flag", "--flag="]).
   for (const alias of flagAliases) {
     if (wordText === alias) return { kind: "exact" };
   }

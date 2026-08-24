@@ -582,6 +582,19 @@ describe("glued short flags (issue #11)", () => {
       assert.equal(getFlagValue(args, flags, bad), null);
       assert.equal(hasFlag(args, flags, bad), false);
     });
+
+    it("option-level garbage: string gluedShorts is ignored like omitted", () => {
+      // `{ gluedShorts: "RR" }` must NOT enable glue via char iteration.
+      const bad = { gluedShorts: "RR" } as unknown as FlagLookupOptions;
+      assert.equal(getFlagValue(args, flags, bad), null);
+      assert.equal(hasFlag(args, flags, bad), false);
+    });
+
+    it("option-level garbage: numeric gluedShorts is ignored like omitted", () => {
+      const bad = { gluedShorts: 123 } as unknown as FlagLookupOptions;
+      assert.equal(getFlagValue(args, flags, bad), null);
+      assert.equal(hasFlag(args, flags, bad), false);
+    });
   });
 
   describe("hasFlag mirrors", () => {
@@ -602,6 +615,12 @@ describe("glued short flags (issue #11)", () => {
 
     it("false without opt-in (default blindness mirror)", () => {
       assert.equal(hasFlag([W("gh"), W("-Rc/d")], ["-R", "--repo"]), false);
+    });
+
+    it("attached-empty -R= still counts as flag presence", () => {
+      // Documented contract: the attached-empty spelling is a flag with
+      // an empty value — presence, not absence.
+      assert.equal(hasFlag([W("-R=")], ["-R"], { gluedShorts: ["R"] }), true);
     });
   });
 });
