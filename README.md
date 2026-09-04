@@ -183,14 +183,14 @@ when: { not: { infoOnly: { extraFlags: ["-h"] } } }
 
 ## Helpers (escape-hatch)
 
-When the built-in predicates aren't enough, reach for these helpers inside `when.condition`:
+When the built-in predicates aren't enough, reach for the flag helpers inside `when.condition` — they live in the `@cad0p/pi-steering` root (requires core >=0.3.0):
 
 ```ts
 import {
   getFlagValue,
   hasEnvAssignment,
   hasFlag,
-} from "pi-steering-flags";
+} from "@cad0p/pi-steering";
 
 when: {
   condition: async (ctx) => {
@@ -251,7 +251,7 @@ Flag-presence and allowlist checks are opinionated policy:
 
 Reasonable plugins can disagree. Keeping this logic in a plugin lets it iterate on its own release cadence without committing the engine to decisions about every CLI's conventions.
 
-If a second unrelated plugin ends up depending on `hasFlag` / `getFlagValue` / `hasEnvAssignment`, those primitives will be promoted into pi-steering core. For v0.1.0 they stay here.
+The `hasFlag` / `getFlagValue` / `hasEnvAssignment` (+ `isInfoOnly` / `INFO_FLAGS`) primitives used to live here; they were promoted into the pi-steering core root (requires core >=0.3.0). This package keeps only the policy predicates above.
 
 ### Why `Rule.when`, not `Rule.unless`?
 

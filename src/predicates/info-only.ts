@@ -36,8 +36,7 @@
  * evaluates the clause.
  */
 
-import { definePredicate } from "@cad0p/pi-steering";
-import { isInfoOnly } from "../helpers.ts";
+import { definePredicate, isInfoOnly } from "@cad0p/pi-steering";
 import type { InfoOnlyArgs } from "../types.ts";
 
 export const infoOnly = definePredicate<boolean | InfoOnlyArgs>((args, ctx) => {

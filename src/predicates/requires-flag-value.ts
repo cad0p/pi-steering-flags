@@ -35,8 +35,7 @@
  *   }
  */
 
-import { definePredicate } from "@cad0p/pi-steering";
-import { getFlagValue } from "../helpers.ts";
+import { definePredicate, getFlagValue } from "@cad0p/pi-steering";
 import type { RequiresFlagValueArgs } from "../types.ts";
 
 export const requiresFlagValue = definePredicate<RequiresFlagValueArgs>(
