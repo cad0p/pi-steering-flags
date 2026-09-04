@@ -18,7 +18,7 @@
  *     The former `when.condition` escape-hatch helpers (`hasFlag`,
  *     `getFlagValue`, `hasEnvAssignment`, `isInfoOnly`, `INFO_FLAGS`,
  *     `FlagLookupOptions`) were promoted to the `@cad0p/pi-steering`
- *     root in 0.2.0 — import them from core now.
+ *     root (requires core >=0.3.0) — import them from core now.
  *
  * See this package's README for usage examples, and the pi-steering
  * README "Writing plugins" section for the design rationale.
