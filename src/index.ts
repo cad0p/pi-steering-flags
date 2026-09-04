@@ -14,8 +14,11 @@
  *   - Keywords: `["pi-package", "pi-steering-package", ...]` for
  *     ecosystem discoverability via pi.dev and `npm search`.
  *   - PeerDep on `@cad0p/pi-steering` (pinned range once published).
- *   - Four predicates exported as a `Plugin`, four helpers exported
- *     for `when.condition` escape-hatch use.
+ *   - Four predicates exported as a `Plugin` for `when.<name>` use.
+ *     The former `when.condition` escape-hatch helpers (`hasFlag`,
+ *     `getFlagValue`, `hasEnvAssignment`, `isInfoOnly`, `INFO_FLAGS`,
+ *     `FlagLookupOptions`) were promoted to the `@cad0p/pi-steering`
+ *     root in 0.2.0 — import them from core now.
  *
  * See this package's README for usage examples, and the pi-steering
  * README "Writing plugins" section for the design rationale.
@@ -153,17 +156,9 @@ export const flagsPlugin = {
 
 export default flagsPlugin;
 
-export type { FlagLookupOptions } from "./helpers.ts";
-export {
-  getFlagValue,
-  hasEnvAssignment,
-  hasFlag,
-  INFO_FLAGS,
-  isInfoOnly,
-} from "./helpers.ts";
 export { allowlistedFlagsOnly } from "./predicates/allowlisted-flags-only.ts";
 // Named re-exports \u2014 pick-your-piece imports for authors who want
-// just one predicate or a helper.
+// just one predicate.
 export { infoOnly } from "./predicates/info-only.ts";
 export { requiresFlag } from "./predicates/requires-flag.ts";
 export { requiresFlagValue } from "./predicates/requires-flag-value.ts";
