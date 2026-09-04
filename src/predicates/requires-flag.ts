@@ -14,8 +14,7 @@
  * Fires (rule BLOCKS) when NONE of the listed equivalents appear.
  */
 
-import { definePredicate } from "@cad0p/pi-steering";
-import { hasEnvAssignment, hasFlag } from "../helpers.ts";
+import { definePredicate, hasEnvAssignment, hasFlag } from "@cad0p/pi-steering";
 import type { RequiresFlagArgs } from "../types.ts";
 
 export const requiresFlag = definePredicate<RequiresFlagArgs | string>(
