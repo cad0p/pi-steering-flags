@@ -3,12 +3,12 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Word } from "@cad0p/pi-steering";
+import type { PredicateWord } from "@cad0p/pi-steering";
 import { testPredicate } from "@cad0p/pi-steering/testing";
 import { allowlistedFlagsOnly } from "./allowlisted-flags-only.ts";
 
-function W(value: string): Word {
-  return { value, text: value, pos: 0, end: value.length } as Word;
+function W(value: string): PredicateWord {
+  return { value, text: value, pos: 0, end: value.length, rawText: value };
 }
 
 describe("allowlistedFlagsOnly", () => {

@@ -3,22 +3,22 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Word } from "@cad0p/pi-steering";
+import type { PredicateWord } from "@cad0p/pi-steering";
 import {
   type MockContextOptions,
   testPredicate,
 } from "@cad0p/pi-steering/testing";
 import { requiresFlagValue } from "./requires-flag-value.ts";
 
-function W(value: string): Word {
-  return { value, text: value, pos: 0, end: value.length } as Word;
+function W(value: string): PredicateWord {
+  return { value, text: value, pos: 0, end: value.length, rawText: value };
 }
 
 // Closing-keywords-only pattern: "closes #12" satisfies it, "see #13"
 // does NOT — which is what makes the last-wins rows (6/7) observable.
 const CLOSING = /\b(closes?|fixe?s?|resolves?)\s+#\d+\b/i;
 
-function bashCtx(args: Word[]): MockContextOptions {
+function bashCtx(args: PredicateWord[]): MockContextOptions {
   return {
     input: {
       tool: "bash",
@@ -116,12 +116,13 @@ describe("requiresFlagValue", () => {
   it("quote-aware: reads .value before .text", async () => {
     // Walker-resolved .value is the quoted arg's real content; the raw
     // .text deliberately disagrees so reading .text would flip this.
-    const quoted: Word = {
+    const quoted: PredicateWord = {
       value: "closes #12",
       text: "see #13",
       pos: 0,
       end: 9,
-    } as Word;
+      rawText: "see #13",
+    };
     const fires = await testPredicate(
       requiresFlagValue,
       { flags: ["--subject", "-t"], matches: CLOSING },
