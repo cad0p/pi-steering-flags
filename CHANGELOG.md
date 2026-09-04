@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 - Opt-in gluedShorts for hasFlag/getFlagValue — glued short-flag values (closes #11)
 
+### ⚙️ Miscellaneous Tasks
+
+- Delete promoted flag primitives, repoint to core root (closes #23)
+
 
 ## [0.1.1] - 2026-08-24
 
