@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [calver-released]
+
+<!-- USER-EDITABLE SECTION START -->
+<!-- Add your curated release notes here. -->
+<!-- USER-EDITABLE SECTION END -->
+
+### 🚀 Features
+
+- Opt-in gluedShorts for hasFlag/getFlagValue — glued short-flag values (closes #11)
+
+### ⚙️ Miscellaneous Tasks
+
+- Delete promoted flag primitives, repoint to core root (closes #23)
+- Bump @cad0p/pi-steering to 0.2.0-20260908.1, migrate to ctx.command facade (closes #25)
+
+
 ## [0.1.1] - 2026-08-24
 
 <!-- USER-EDITABLE SECTION START -->
