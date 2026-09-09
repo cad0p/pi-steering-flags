@@ -20,6 +20,7 @@ describe("requiresFlag", () => {
         basename: "aws",
         args: [W("s3"), W("ls")],
       },
+      descriptors: { aws: {} },
     });
     assert.equal(fires, true);
   });
@@ -32,6 +33,7 @@ describe("requiresFlag", () => {
         basename: "aws",
         args: [W("s3"), W("ls"), W("--profile"), W("dev")],
       },
+      descriptors: { aws: {} },
     });
     assert.equal(fires, false);
   });
@@ -44,6 +46,7 @@ describe("requiresFlag", () => {
         basename: "aws",
         args: [W("s3"), W("ls"), W("--profile=dev")],
       },
+      descriptors: { aws: {} },
     });
     assert.equal(fires, false);
   });
@@ -59,6 +62,7 @@ describe("requiresFlag", () => {
           basename: "aws",
           args: [W("s3"), W("ls")],
         },
+        descriptors: { aws: {} },
       },
     );
     assert.equal(fires, true);
@@ -76,6 +80,7 @@ describe("requiresFlag", () => {
           args: [W("s3"), W("ls")],
           envAssignments: [W("AWS_PROFILE=dev")],
         },
+        descriptors: { aws: {} },
       },
     );
     assert.equal(fires, false);
@@ -92,6 +97,7 @@ describe("requiresFlag", () => {
           basename: "kubectl",
           args: [W("apply"), W("-n"), W("kube-system")],
         },
+        descriptors: { kubectl: {} },
       },
     );
     assert.equal(fires, false);
@@ -109,6 +115,7 @@ describe("requiresFlag", () => {
           args: [W("s3"), W("ls")],
           envAssignments: [W("AWS_DEFAULT_REGION=us-east-1")],
         },
+        descriptors: { aws: {} },
       },
     );
     assert.equal(fires, false);
@@ -122,6 +129,7 @@ describe("requiresFlag", () => {
         basename: "aws",
         args: [W("s3"), W("ls")],
       },
+      descriptors: { aws: {} },
     });
     assert.equal(fires, false);
   });
@@ -139,6 +147,7 @@ describe("requiresFlag", () => {
           args: [W("s3"), W("ls")],
           // envAssignments omitted
         },
+        descriptors: { aws: {} },
       },
     );
     assert.equal(fires, true);

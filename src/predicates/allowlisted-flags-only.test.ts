@@ -23,6 +23,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("--all"), W("--description"), W("foo.md")],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, false);
@@ -39,6 +40,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("--publish"), W("--description"), W("foo.md")],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, true);
@@ -55,6 +57,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("--description=foo.md")],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, false);
@@ -71,6 +74,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("--description"), W("path/to/file.md")],
         },
+        descriptors: { cr: {} },
       },
     );
     // `path/to/file.md` doesn't start with `-` → ignored.
@@ -88,6 +92,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("-r"), W("CR-12345")],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, true);
@@ -105,6 +110,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cmd",
           args: [W("-ofoo"), W("--verbose")],
         },
+        descriptors: { cmd: {} },
       },
     );
     assert.equal(fires, false);
@@ -121,6 +127,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, false);
@@ -138,6 +145,7 @@ describe("allowlistedFlagsOnly", () => {
           basename: "cr",
           args: [W("--publish")],
         },
+        descriptors: { cr: {} },
       },
     );
     assert.equal(fires, false);

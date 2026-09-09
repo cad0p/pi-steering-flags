@@ -36,7 +36,7 @@
  * evaluates the clause.
  */
 
-import { definePredicate, isInfoOnly } from "@cad0p/pi-steering";
+import { definePredicate } from "@cad0p/pi-steering";
 import type { InfoOnlyArgs } from "../types.ts";
 
 export const infoOnly = definePredicate<boolean | InfoOnlyArgs>((args, ctx) => {
@@ -45,5 +45,5 @@ export const infoOnly = definePredicate<boolean | InfoOnlyArgs>((args, ctx) => {
     args !== null && typeof args === "object" && Array.isArray(args.extraFlags)
       ? args.extraFlags
       : undefined;
-  return isInfoOnly(ctx.input?.args ?? [], extraFlags);
+  return ctx.command.isInfoOnly(extraFlags);
 });

@@ -35,7 +35,7 @@
  *   }
  */
 
-import { definePredicate, getFlagValue } from "@cad0p/pi-steering";
+import { type CLIFlag, definePredicate } from "@cad0p/pi-steering";
 import type { RequiresFlagValueArgs } from "../types.ts";
 
 export const requiresFlagValue = definePredicate<RequiresFlagValueArgs>(
@@ -58,7 +58,11 @@ export const requiresFlagValue = definePredicate<RequiresFlagValueArgs>(
     // /y is stateful across evaluations and would intermittently
     // flip verdicts.
     args.matches.lastIndex = 0;
-    const value = getFlagValue(ctx.input?.args, args.flags);
+    const entries: CLIFlag[] = args.flags.map((f) => ({
+      aliases: [f],
+      takesValue: true,
+    }));
+    const value = ctx.command.getFlagValue(entries);
     return value === null || !args.matches.test(value);
   },
 );

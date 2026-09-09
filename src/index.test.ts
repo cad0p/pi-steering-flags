@@ -20,16 +20,35 @@ import {
 } from "@cad0p/pi-steering/testing";
 import flagsPlugin from "./index.ts";
 
+/**
+ * Argv facts for the basenames these suites drive (core #117:
+ * registry-only arity — absent descriptors are loud). Explicit-strict
+ * empty except `aws --profile` (takesValue:true: the separated
+ * `--profile dev` form must consume, mirroring the owning-table
+ * pattern every consumer copies).
+ */
+const testFacts = {
+  name: "test-facts",
+  cliDescriptors: {
+    aws: {
+      flags: {
+        profile: { aliases: ["--profile"], takesValue: true },
+      },
+    },
+    cr: {},
+    gh: {},
+  },
+} as const;
+
 describe("pi-steering-flags plugin (e2e)", () => {
   it("requiresFlag: blocks when flag is missing, allows when present", async () => {
     const config = defineConfig({
-      plugins: [flagsPlugin],
+      plugins: [flagsPlugin, testFacts],
       rules: [
         {
           name: "aws-requires-profile",
           tool: "bash",
-          field: "command",
-          pattern: /^aws\b/,
+          command: "aws",
           when: { requiresFlag: { flag: "--profile", env: "AWS_PROFILE" } },
           reason: "aws requires --profile",
         },
@@ -50,13 +69,12 @@ describe("pi-steering-flags plugin (e2e)", () => {
 
   it("allowlistedFlagsOnly: blocks unknown flags, allows allowlisted", async () => {
     const config = defineConfig({
-      plugins: [flagsPlugin],
+      plugins: [flagsPlugin, testFacts],
       rules: [
         {
           name: "cr-allowlisted",
           tool: "bash",
-          field: "command",
-          pattern: /^cr\b/,
+          command: "cr",
           when: {
             allowlistedFlagsOnly: { allow: ["--all", "--description"] },
           },
@@ -77,13 +95,12 @@ describe("pi-steering-flags plugin (e2e)", () => {
 
   it("combines with when.not.infoOnly carve-out", async () => {
     const config = defineConfig({
-      plugins: [flagsPlugin],
+      plugins: [flagsPlugin, testFacts],
       rules: [
         {
           name: "cr-allowlisted-help-ok",
           tool: "bash",
-          field: "command",
-          pattern: /^cr\b/,
+          command: "cr",
           when: {
             not: { infoOnly: { extraFlags: ["-h"] } },
             allowlistedFlagsOnly: { allow: ["--description"] },
@@ -105,13 +122,12 @@ describe("pi-steering-flags plugin (e2e)", () => {
 
   it("infoOnly: bare true blocks non-info-only commands, allows --help / --version", async () => {
     const config = defineConfig({
-      plugins: [flagsPlugin],
+      plugins: [flagsPlugin, testFacts],
       rules: [
         {
           name: "gh-merge-info-only",
           tool: "bash",
-          field: "command",
-          pattern: /^gh pr merge\b/,
+          command: "gh",
           when: { not: { infoOnly: true } },
           reason: "real gh pr merge needs extra guards",
         },
@@ -130,13 +146,12 @@ describe("pi-steering-flags plugin (e2e)", () => {
 
   it("infoOnly: help inside a quoted VALUE does not carve out (issue #13 repro)", async () => {
     const config = defineConfig({
-      plugins: [flagsPlugin],
+      plugins: [flagsPlugin, testFacts],
       rules: [
         {
           name: "gh-merge-quoted-help",
           tool: "bash",
-          field: "command",
-          pattern: /^gh pr merge\b/,
+          command: "gh",
           when: { not: { infoOnly: true } },
           reason: "real gh pr merge needs extra guards",
         },

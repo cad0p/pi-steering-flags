@@ -20,6 +20,7 @@ describe("infoOnly", () => {
         basename: "gh",
         args: [W("pr"), W("merge"), W("--help")],
       },
+      descriptors: { gh: {} },
     });
     assert.equal(fires, true);
   });
@@ -32,6 +33,7 @@ describe("infoOnly", () => {
         basename: "cr",
         args: [W("--version")],
       },
+      descriptors: { cr: {} },
     });
     assert.equal(fires, true);
   });
@@ -44,6 +46,7 @@ describe("infoOnly", () => {
         basename: "gh",
         args: [W("pr"), W("merge"), W("--squash")],
       },
+      descriptors: { gh: {} },
     });
     assert.equal(fires, false);
   });
@@ -64,6 +67,7 @@ describe("infoOnly", () => {
           W("see --help"),
         ],
       },
+      descriptors: { gh: {} },
     });
     assert.equal(fires, false);
   });
@@ -79,6 +83,7 @@ describe("infoOnly", () => {
           basename: "mycli",
           args: [W("-h")],
         },
+        descriptors: { mycli: {} },
       },
     );
     assert.equal(fires, true);
@@ -96,6 +101,7 @@ describe("infoOnly", () => {
           basename: "curl",
           args: [W("-v"), W("https://example.com")],
         },
+        descriptors: { curl: {} },
       },
     );
     assert.equal(fires, false);
@@ -109,6 +115,7 @@ describe("infoOnly", () => {
         basename: "cr",
         args: [W("--help")],
       },
+      descriptors: { cr: {} },
     });
     assert.equal(fires, false);
   });
