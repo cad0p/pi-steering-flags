@@ -18,7 +18,9 @@
  *     The former `when.condition` escape-hatch helpers (`hasFlag`,
  *     `getFlagValue`, `hasEnvAssignment`, `isInfoOnly`, `INFO_FLAGS`,
  *     `FlagLookupOptions`) were promoted to the `@cad0p/pi-steering`
- *     root (requires core >=0.3.0) — import them from core now.
+ *     root and then superseded by the bound `ctx.command` facade
+ *     (core #101/#110, entry-only; requires core >=0.2.0-20260908.1)
+ *     — predicates read flags through `ctx.command`, never root imports.
  *
  * See this package's README for usage examples, and the pi-steering
  * README "Writing plugins" section for the design rationale.

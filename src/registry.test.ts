@@ -85,8 +85,7 @@ const IMPORT_HEADER = [
 const RULE_PROLOGUE = [
   '\tname: "x",',
   '\ttool: "bash",',
-  '\tfield: "command",',
-  '\tpattern: "^x",',
+  '\tcommand: "x",',
   '\treason: "x",',
 ].join("\n");
 

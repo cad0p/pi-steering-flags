@@ -12,8 +12,8 @@ importers:
         specifier: ^2.3.14
         version: 2.5.7
       '@cad0p/pi-steering':
-        specifier: 0.2.0-20260904.3
-        version: 0.2.0-20260904.3(@earendil-works/pi-coding-agent@0.84.1(ws@8.21.3)(zod@4.4.3))
+        specifier: 0.2.0-20260908.1
+        version: 0.2.0-20260908.1(@earendil-works/pi-coding-agent@0.84.1(ws@8.21.3)(zod@4.4.3))
       '@cad0p/unbash-walker':
         specifier: ^0.1.0
         version: 0.1.0
@@ -193,8 +193,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cad0p/pi-steering@0.2.0-20260904.3':
-    resolution: {integrity: sha512-0A4aXl7zPe3egqoJuJafsRusjses63NgR2IeN1+hcewy3CJta3GNKZdMi1zxhr5yz+P4vLoW2LUb0T91RY4pXg==}
+  '@cad0p/pi-steering@0.2.0-20260908.1':
+    resolution: {integrity: sha512-5AW7YgtOlypVvIWb766+iDTdiDAIQBakRjCg+ol1/y+ugnA/Y/yatRDTo+/+MN3mbabrXk6ggpGPRXkHBKmItA==}
     engines: {node: '>=22.19.0'}
     hasBin: true
     peerDependencies:
@@ -955,7 +955,7 @@ snapshots:
   '@biomejs/cli-win32-x64@2.5.7':
     optional: true
 
-  '@cad0p/pi-steering@0.2.0-20260904.3(@earendil-works/pi-coding-agent@0.84.1(ws@8.21.3)(zod@4.4.3))':
+  '@cad0p/pi-steering@0.2.0-20260908.1(@earendil-works/pi-coding-agent@0.84.1(ws@8.21.3)(zod@4.4.3))':
     dependencies:
       '@cad0p/unbash-walker': 0.1.0-20260904.0
       '@earendil-works/pi-coding-agent': 0.84.1(ws@8.21.3)(zod@4.4.3)

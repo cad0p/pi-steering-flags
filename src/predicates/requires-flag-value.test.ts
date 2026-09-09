@@ -26,6 +26,13 @@ function bashCtx(args: PredicateWord[]): MockContextOptions {
       basename: "gh",
       args,
     },
+    descriptors: {
+      gh: {
+        flags: {
+          subject: { aliases: ["--subject", "-t"], takesValue: true },
+        },
+      },
+    },
   };
 }
 
@@ -180,6 +187,13 @@ describe("requiresFlagValue", () => {
           command: "gh pr merge",
           basename: "gh",
           // args omitted
+        },
+        descriptors: {
+          gh: {
+            flags: {
+              subject: { aliases: ["--subject", "-t"], takesValue: true },
+            },
+          },
         },
       },
     );

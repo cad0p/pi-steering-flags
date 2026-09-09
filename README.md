@@ -20,14 +20,28 @@ import { defineConfig } from "@cad0p/pi-steering";
 import flagsPlugin from "pi-steering-flags";
 
 export default defineConfig({
-  plugins: [flagsPlugin],
+  plugins: [
+    flagsPlugin,
+    // Argv facts for the gated basenames (core #117: registry-only
+    // arity — absent descriptors block loud). `cr` is explicit-strict
+    // empty; `aws --profile` takes a value (separate `--profile dev`
+    // must consume).
+    {
+      name: "gate-facts",
+      cliDescriptors: {
+        aws: {
+          flags: { profile: { aliases: ["--profile"], takesValue: true } },
+        },
+        cr: {},
+      },
+    },
+  ],
   rules: [
     // Block `aws` invocations without --profile or AWS_PROFILE env.
     {
       name: "aws-requires-profile",
       tool: "bash",
-      field: "command",
-      pattern: /^aws\s+[a-z]/,
+      command: "aws",
       unless: /^aws\s+(sts\s+get-caller-identity|configure)\b/,
       when: {
         requiresFlag: { flag: "--profile", env: "AWS_PROFILE" },
@@ -38,8 +52,7 @@ export default defineConfig({
     {
       name: "cr-allowlisted-flags-only",
       tool: "bash",
-      field: "command",
-      pattern: /^cr\b/,
+      command: "cr",
       when: {
         not: { infoOnly: true },
         allowlistedFlagsOnly: {
@@ -110,12 +123,15 @@ Spread-only (no bare shorthand: it needs both fields), like `allowlistedFlagsOnl
 **Worked example** — `gh pr merge` must reference the issue it closes in its subject — a closing keyword or any bare `#N` reference (help invocations still pass via the info-only carve-out):
 
 ```ts
+// Enclosing config must declare gh's argv facts:
+// `cliDescriptors: { gh: { flags: { subject: { aliases: ["--subject", "-t"], takesValue: true } } } }`
+// (value-taking flags need table rows for the separated `--subject x` form).
 {
   name: "pr-merge-needs-closing-keyword",
   tool: "bash",
-  field: "command",
-  pattern: /^gh pr merge\b/,
+  command: "gh",
   when: {
+    subcommand: ["pr", "merge"],
     not: { infoOnly: { extraFlags: ["-h"] } },
     requiresFlagValue: {
       flags: ["--subject", "-t"],
@@ -183,19 +199,17 @@ when: { not: { infoOnly: { extraFlags: ["-h"] } } }
 
 ## Helpers (escape-hatch)
 
-When the built-in predicates aren't enough, reach for the flag helpers inside `when.condition` — they live in the `@cad0p/pi-steering` root (requires core >=0.3.0):
+When the built-in predicates aren't enough, reach for the bound `ctx.command` facade inside `when.condition` (core #101/#110, entry-only; requires core >=0.2.0-20260908.1 — the P3 bare-helper root exports are deleted, `FlagLookupOptions` included):
 
 ```ts
-import {
-  getFlagValue,
-  hasEnvAssignment,
-  hasFlag,
-} from "@cad0p/pi-steering";
+import type { CLIFlag } from "@cad0p/pi-steering";
+
+const description: CLIFlag = { aliases: ["--description"], takesValue: true };
 
 when: {
   condition: async (ctx) => {
     if (ctx.input.tool !== "bash") return false;
-    const path = getFlagValue(ctx.input.args, "--description");
+    const path = ctx.command.getFlagValue(description);
     if (path === null) return false;
     const result = await ctx.exec("test", ["-f", path], { cwd: ctx.cwd });
     return result.exitCode !== 0;
@@ -203,42 +217,16 @@ when: {
 }
 ```
 
-- `hasFlag(args, flag, options?)` — presence check: bare, attached `flag=value`, or — when opted in — glued `-X<value>`. `flag` is a single flag or an alias set.
-- `getFlagValue(args, flags, options?)` — LAST-flag-wins value lookup; `flags` is a single flag or an alias set. Recognizes separated `flag value`, attached `flag=value`, and (opt-in) glued `-X<value>`; fail-closed on a trailing valueless flag.
-- `hasEnvAssignment(envAssignments, name)` — literal env-var name match.
-- `INFO_FLAGS` — the default info-only set (`["--help", "--version"]`).
-- `isInfoOnly(args, extraFlags?)` — token-level info-only detection: true when any of `INFO_FLAGS` (plus optional additive `extraFlags`) appears in `args`. Quote-aware, so `--help` inside a quoted value does NOT match; the attached form `--help=x` DOES.
+Entries always come from the owning plugin's table — never hand-build literals in rules (a typo'd `"--delet"` string is a silent fail-open skip; a typo'd `flags.delet` property is a compile error). The generic one-off above is the exception: entries are constructed inline because the flag is local to the rule. Value-taking flags need table rows for the separated `--flag value` form (`cliDescriptors: { mycli: { flags: { description: { aliases: ["--description"], takesValue: true } } } }`); without the row only the attached `--flag=value` form resolves.
 
-**`getFlagValue`** scans right-to-left so the LAST occurrence wins, matching how gh / cobra / pflag CLIs parse repeated flags. The second argument accepts a single flag or an alias set — gh treats `-t` and `--subject` as one logical flag, so aliases are OR'd at every scanned position:
+- `ctx.command.hasFlag(entry | entry[])` — presence: bare token, attached `--flag=value`, declared consuming-flag values skipped by position, short bundles (table-derived glue).
+- `ctx.command.getFlagValue(entry | entry[])` — LAST-flag-wins value lookup (right-to-left, so `gh pr merge -t "see #13" --subject "closes #12"` yields `"closes #12"`). Fail-closed on a trailing valueless flag (`-t foo --subject` → `null`, no fallback).
+- `ctx.command.getAllFlagValues(entry | entry[])` — every occurrence in argv order.
+- `ctx.command.hasEnvAssignment(name)` — literal env-var name match on the shell prefix.
+- `ctx.command.isInfoOnly(extraFlags?)` — token-level, quote-aware (`--help` inside a quoted value does NOT match; `--help=x` DOES).
+- `INFO_FLAGS` — still exported from the core root (data constant: `["--help", "--version"]`).
 
-```ts
-// gh pr merge -t "see #13" --subject "closes #12"
-getFlagValue(ctx.input.args, ["-t", "--subject"]); // "closes #12"
-```
-
-It recognizes both `--flag=value` and `--flag value`, and is fail-closed on a trailing valueless flag: `gh pr merge -t foo --subject` returns `null` rather than falling back to the overridden `-t foo` (real pflag rejects that command line anyway). Like all helpers it is quote-aware via `.value`, so consumers migrating from hand-rolled `.text` + `unquote` scans get upgraded quote handling for free.
-
-**Opt-in glued short flags** — both helpers take an optional third argument, `FlagLookupOptions`. By default they are blind to the glued short form `-X<value>` (`gh -Rcad0p/x` reaches the helpers as ONE argv word). Declaring the flag's letters turns decomposition on:
-
-```ts
-// gh -Rc/d pr merge  →  the walker keeps "-Rc/d" as a single argv word
-getFlagValue(ctx.input.args, ["-R", "--repo"], { gluedShorts: ["R"] }); // "c/d"
-hasFlag(ctx.input.args, "-R", { gluedShorts: ["R"] });                  // true
-getFlagValue(ctx.input.args, ["-R", "--repo"]);                         // null (blind default)
-```
-
-Why opt-in per letter? POSIX lets one CLI accept glued values AND bundling simultaneously: `-vf` may be the bundle `-v -f`, not `-v` plus value `f`. Blanket prefix decomposition misreads real commands like `docker run -it` or `rm -rf` — only you know your CLI's arity, so you declare it.
-
-Once opted in:
-
-- Only single-dash single-letter aliases whose letter is declared ever split (`-R` under `gluedShorts: ["R"]`). Long forms (`--repo=cad0p/x`, `--repo cad0p/x`) and double-dash tokens are never decomposed.
-- Bundling stays safe: with `gluedShorts: ["f"]`, docker's `-vf alpine` matches NOTHING (the bundle starts with the undeclared `-v`); a declared lead letter consumes its remainder as the value (`-fv` → flag `f`, value `"v"`).
-- Per-position precedence: exact `-R` > attached `-R=x` > glued `-R<rest>` — the glued value is the whole remainder.
-- Everything else carries over unchanged: right-to-left last-wins across mixed forms (`gh -R a/b pr merge -Rc/d` → `"c/d"`), quote-awareness, and the trailing-valueless fail-closed rule (`gh --repo a/b pr merge -R` → `null`, no fallback).
-
-Malformed options fail open (house precedent): non-array, empty, non-string, or multi-char entries in `gluedShorts` are ignored, degrading to the blind default.
-
-All helpers are quote-aware (read `.value` before falling back to `.text`) and handle `undefined` input gracefully.
+All facade reads are quote-aware (`.value` before `.text`). Out-of-handler / test use goes through the root-exported `commandFromInput` factory.
 
 ## Design
 
@@ -251,7 +239,7 @@ Flag-presence and allowlist checks are opinionated policy:
 
 Reasonable plugins can disagree. Keeping this logic in a plugin lets it iterate on its own release cadence without committing the engine to decisions about every CLI's conventions.
 
-The `hasFlag` / `getFlagValue` / `hasEnvAssignment` (+ `isInfoOnly` / `INFO_FLAGS`) primitives used to live here; they were promoted into the pi-steering core root (requires core >=0.3.0). This package keeps only the policy predicates above.
+The `hasFlag` / `getFlagValue` / `hasEnvAssignment` (+ `isInfoOnly` / `INFO_FLAGS`) primitives used to live here; they were promoted into pi-steering core (P3) and then superseded by the bound `ctx.command` facade (entry-only, table-bound; requires core >=0.2.0-20260908.1). This package keeps only the policy predicates above.
 
 ### Why `Rule.when`, not `Rule.unless`?
 
