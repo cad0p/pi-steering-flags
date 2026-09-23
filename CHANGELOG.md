@@ -12,6 +12,10 @@ All notable changes to this project will be documented in this file.
 
 - Opt-in gluedShorts for hasFlag/getFlagValue — glued short-flag values (closes #11)
 
+### 📚 Documentation
+
+- AGENTS.md — pinned base text (drop Goldmine variant) (closes #28) ([#29](https://github.com/cad0p/pi-steering-flags/pull/29))
+
 ### ⚙️ Miscellaneous Tasks
 
 - Delete promoted flag primitives, repoint to core root (closes #23)
